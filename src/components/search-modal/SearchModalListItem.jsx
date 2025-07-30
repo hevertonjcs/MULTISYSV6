@@ -192,7 +192,7 @@ const SearchModalListItem = ({
     // Construir mensagem personalizada. Não use concatenação com encodeURIComponent em cada
     // pedaço pois torna a leitura difícil; encodeURIComponent será aplicado no final.
     const mensagem = `Olá ${nomeCliente}, Tudo bem? aqui é da equipe Multinegociações. ` +
-      `Estmos entrando em contato Referente ao seu cadastro feito com o vendedor ${vendedor} ` +
+      `Estamos entrando em contato Referente ao seu cadastro feito com o vendedor ${vendedor} ` +
       `no dia ${dataCadastroFormatada} está com o status: ${statusCliente}. ` +
       `Gostaria de saber se possui duvidas, Como podemos te ajudar a dar o andamento!`;
     const encodedMsg = encodeURIComponent(mensagem);
