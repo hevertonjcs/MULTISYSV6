@@ -1,6 +1,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, Search, BarChart2, PlusCircle, Users, MessageSquare, LifeBuoy } from 'lucide-react';
+import {
+  LogOut,
+  Search,
+  BarChart2,
+  PlusCircle,
+  Users,
+  MessageSquare,
+  LifeBuoy
+} from 'lucide-react';
 import WelcomeHeader from '@/components/WelcomeHeader';
 import ActiveUsersIndicator from '@/components/ActiveUsersIndicator';
 import ActivityLogFeed from '@/components/ActivityLogFeed';
@@ -16,9 +24,17 @@ const AdminDashboard = ({
   onShowRescueModal,
   hasUnreadMessages,
 }) => {
-  const permissions = userInfo?.permissoes || {};
-  const isAdmin = userInfo?.tipo_acesso === 'admin';
 
+  // Proteção contra erros: garante que userInfo sempre exista
+  const permissions = userInfo?.permissoes || {};
+
+  // Identificadores de tipo de acesso
+  const tipo = userInfo?.tipo_acesso?.toLowerCase() || '';
+  const isAdmin = tipo === 'admin';
+  const isSupervisor = tipo === 'supervisor';
+
+  // 🔒 Controle de permissões
+  const canViewCadastros = isAdmin || permissions.pode_ver_cadastros;
   const canViewInsights = isAdmin || permissions.pode_ver_insights;
   const canManageUsers = isAdmin || permissions.pode_gerenciar_usuarios;
   const canViewChat = isAdmin || permissions.pode_ver_chat_supervisores;
@@ -29,6 +45,8 @@ const AdminDashboard = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 text-foreground p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+
+        {/* Cabeçalho */}
         <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <WelcomeHeader userInfo={userInfo} />
           <div className="flex items-center gap-2">
@@ -39,19 +57,29 @@ const AdminDashboard = ({
           </div>
         </header>
 
+        {/* Conteúdo principal */}
         <main>
+          {/* Seção de botões */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+            {/* Sempre disponível */}
             <DashboardButton
               icon={<PlusCircle />}
               label="Novo Cadastro"
               onClick={onNavigateToForm}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             />
-            <DashboardButton
-              icon={<Search />}
-              label="Pesquisar Cadastros"
-              onClick={onShowSearch}
-            />
+
+            {/* Pesquisar Cadastros — depende da permissão */}
+            {canViewCadastros && (
+              <DashboardButton
+                icon={<Search />}
+                label="Pesquisar Cadastros"
+                onClick={onShowSearch}
+              />
+            )}
+
+            {/* Insights */}
             {canViewInsights && (
               <DashboardButton
                 icon={<BarChart2 />}
@@ -59,6 +87,8 @@ const AdminDashboard = ({
                 onClick={onShowInsights}
               />
             )}
+
+            {/* Gerenciar Usuários */}
             {canManageUsers && (
               <DashboardButton
                 icon={<Users />}
@@ -66,6 +96,8 @@ const AdminDashboard = ({
                 onClick={onShowUserManagement}
               />
             )}
+
+            {/* Chat Supervisores */}
             {canViewChat && (
               <DashboardButton
                 icon={<MessageSquare />}
@@ -74,6 +106,8 @@ const AdminDashboard = ({
                 hasNotification={hasUnreadMessages}
               />
             )}
+
+            {/* Função Resgate */}
             {canUseRescueFunction && (
               <DashboardButton
                 icon={<LifeBuoy />}
@@ -84,6 +118,7 @@ const AdminDashboard = ({
             )}
           </section>
 
+          {/* Seções de usuários ativos e logs */}
           {(canViewActiveUsers || canViewActivityLog) && (
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {canViewActiveUsers && (
@@ -104,6 +139,7 @@ const AdminDashboard = ({
   );
 };
 
+// Componente genérico para os botões principais do painel
 const DashboardButton = ({ icon, label, onClick, className = '', hasNotification = false }) => (
   <Button
     onClick={onClick}
