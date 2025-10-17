@@ -80,7 +80,7 @@ const App = () => {
         setHasUnreadMessages(true);
         return;
       }
-      
+
       const { data, error } = await supabase
         .from('chat_messages')
         .select('created_at')
@@ -109,17 +109,17 @@ const App = () => {
         }
       })
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
 
   }, [userInfo]);
 
-  // 🔧 CORREÇÃO AQUI: Parsing robusto de permissões e fallback seguro
+  // 🔧 CORREÇÃO DEFINITIVA — Parsing robusto de permissões do banco
   const handleLogin = (loginData) => {
     const defaultPermissions = {
-      pode_ver_todos_cadastros: true,
+      pode_ver_todos_cadastros: false,
       pode_ver_cadastros: true,
       pode_ver_insights: false,
       pode_gerenciar_usuarios: false,
@@ -129,23 +129,23 @@ const App = () => {
       pode_usar_funcao_resgate: false,
     };
 
-    // Converte string JSON para objeto
     let parsedPermissoes = null;
+
     try {
       if (typeof loginData.permissoes === 'string') {
-        parsedPermissoes = JSON.parse(loginData.permissoes);
+        // Corrige strings JSON duplamente escapadas do Supabase
+        const cleaned = loginData.permissoes.replace(/^"|"$/g, '').replace(/\\"/g, '"');
+        parsedPermissoes = JSON.parse(cleaned);
       } else if (typeof loginData.permissoes === 'object' && loginData.permissoes !== null) {
         parsedPermissoes = loginData.permissoes;
       }
     } catch (error) {
-      console.error("Erro ao parsear permissoes:", error, loginData.permissoes);
+      console.error("Erro ao interpretar permissoes do usuário:", error, loginData.permissoes);
       parsedPermissoes = null;
     }
 
-    // Mescla permissões de forma segura
-    let permissions = parsedPermissoes
-      ? { ...defaultPermissions, ...parsedPermissoes }
-      : defaultPermissions;
+    // Garante prioridade às permissões do banco
+    let permissions = parsedPermissoes || defaultPermissions;
 
     // Ajustes automáticos conforme tipo de acesso
     if (loginData.tipo_acesso === 'admin') {
@@ -164,7 +164,8 @@ const App = () => {
       permissions.pode_ver_chat_supervisores = true;
     }
 
-    // Define usuário logado
+    console.log("Usuário logado com permissões:", permissions);
+
     setUserInfo({ ...loginData, permissoes: permissions });
     setCurrentScreen('admin_dashboard');
     setEditingCadastro(null);
@@ -181,7 +182,7 @@ const App = () => {
 
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ 
+          await channel.track({
             online_at: new Date().toISOString(),
             user_name: loginData.vendedor,
             equipe: loginData.equipe,
@@ -209,7 +210,7 @@ const App = () => {
   const handleShowInsights = () => setShowInsightsModal(true);
   const handleShowUserManagement = () => setShowUserManagementModal(true);
   const handleShowRescueModal = () => setShowRescueModal(true);
-  
+
   const handleShowSupervisorChat = () => {
     setShowSupervisorChatModal(true);
     setHasUnreadMessages(false);
@@ -222,19 +223,19 @@ const App = () => {
       if (cadastroData.hasOwnProperty(key)) {
         mappedData[key] = cadastroData[key];
       } else {
-        mappedData[key] = initialFormData[key]; 
+        mappedData[key] = initialFormData[key];
       }
     }
-    
+
     if (userInfo) {
       mappedData.vendedor = cadastroData.vendedor || userInfo.vendedor;
       mappedData.equipe = cadastroData.equipe || userInfo.equipe;
     }
-    
+
     setEditingCadastro(mappedData);
     setCurrentScreen('form');
-    setShowSearchModal(false); 
-    toast({ title: "Modo de Edição", description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}`});
+    setShowSearchModal(false);
+    toast({ title: "Modo de Edição", description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}` });
   }, [userInfo, toast]);
 
   const handleFormSubmissionSuccess = () => {
@@ -248,7 +249,7 @@ const App = () => {
     setEditingCadastro(null);
     setCurrentScreen('form');
   };
-  
+
   const handleBackToDashboard = () => {
     setEditingCadastro(null);
     setCurrentScreen('admin_dashboard');
@@ -317,7 +318,7 @@ const App = () => {
         onClose={() => setShowUserManagementModal(false)}
         currentUser={userInfo}
       />
-      
+
       {(userInfo?.tipo_acesso === 'admin' || userInfo?.permissoes?.pode_ver_chat_supervisores) && (
         <SupervisorChatModal
           isOpen={showSupervisorChatModal}
