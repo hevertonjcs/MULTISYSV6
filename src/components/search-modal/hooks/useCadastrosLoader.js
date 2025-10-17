@@ -14,6 +14,9 @@ export const useCadastrosLoader = (initialFilters) => {
   const [dateRange, setDateRange] = useState(initialFilters.dateRange || { from: null, to: null });
   const { userInfo } = initialFilters;
 
+  // -----------------------------------------------
+  // FILTROS LOCAIS (aplicados no front)
+  // -----------------------------------------------
   const filterAndSetCadastros = useCallback((allCadastros) => {
     let filtered = allCadastros;
 
@@ -37,7 +40,7 @@ export const useCadastrosLoader = (initialFilters) => {
     }
 
     if (statusFilter && statusFilter !== 'all_status') {
-       filtered = filtered.filter(cadastro => {
+      filtered = filtered.filter(cadastro => {
         const normalizedStatus = (cadastro.status_cliente || '')
           .toLowerCase()
           .normalize('NFD')
@@ -69,44 +72,83 @@ export const useCadastrosLoader = (initialFilters) => {
     setFilteredCadastros(filtered.sort((a, b) => new Date(b.data_cadastro) - new Date(a.data_cadastro)));
   }, [searchTerm, searchField, statusFilter, dateRange]);
 
+  // -----------------------------------------------
+  // CARREGAR CADASTROS DO SUPABASE
+  // -----------------------------------------------
   const loadCadastros = useCallback(async () => {
     setLoading(true);
+
     if (!supabase) {
-       toast({ title: "Erro de Conexão", description: "Cliente Supabase não está disponível.", variant: "destructive" });
-       setLoading(false);
-       return;
+      toast({
+        title: "Erro de Conexão",
+        description: "Cliente Supabase não está disponível.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
     }
+
     try {
+      // Verifica se o usuário pode visualizar cadastros
+      if (!userInfo?.permissoes?.pode_ver_cadastros) {
+        toast({
+          title: "Acesso negado",
+          description: "Você não possui permissão para visualizar cadastros.",
+          variant: "destructive",
+        });
+        setCadastros([]);
+        setFilteredCadastros([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from('cadastros')
         .select('*')
         .order('data_cadastro', { ascending: false });
 
-      if (userInfo && userInfo.tipo_acesso !== 'admin' && !userInfo.permissoes?.pode_ver_todos_cadastros) {
-        query = query.eq('vendedor', userInfo.vendedor);
+      // Aplica filtro de permissões
+      if (userInfo) {
+        const tipo = userInfo.tipo_acesso?.toLowerCase() || '';
+
+        // Se o usuário NÃO for admin e NÃO tiver permissão para ver todos
+        if (tipo !== 'admin' && tipo !== 'supervisor') {
+          if (!userInfo.permissoes?.pode_ver_todos_cadastros) {
+            query = query.eq('vendedor', userInfo.nome_usuario);
+          }
+        }
       }
-      
+
       const { data, error } = await query;
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+
       setCadastros(data || []);
       filterAndSetCadastros(data || []);
     } catch (error) {
       console.error('Erro ao carregar cadastros:', error);
-      toast({ title: "Erro Supabase", description: `Falha ao carregar dados: ${error.message}.`, variant: "destructive" });
+      toast({
+        title: "Erro Supabase",
+        description: `Falha ao carregar dados: ${error.message}.`,
+        variant: "destructive",
+      });
       setCadastros([]);
       filterAndSetCadastros([]);
     } finally {
       setLoading(false);
     }
   }, [filterAndSetCadastros, toast, userInfo]);
-  
+
+  // -----------------------------------------------
+  // Atualiza a filtragem local ao mudar filtros
+  // -----------------------------------------------
   useEffect(() => {
     filterAndSetCadastros(cadastros);
   }, [searchTerm, searchField, statusFilter, dateRange, cadastros, filterAndSetCadastros]);
 
+  // -----------------------------------------------
+  // Retorno do hook
+  // -----------------------------------------------
   return {
     cadastros,
     setCadastros,
@@ -117,6 +159,6 @@ export const useCadastrosLoader = (initialFilters) => {
     searchField, setSearchField,
     statusFilter, setStatusFilter,
     dateRange, setDateRange,
-    filterAndSetCadastros 
+    filterAndSetCadastros
   };
 };
