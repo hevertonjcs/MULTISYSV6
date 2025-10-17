@@ -19,77 +19,102 @@ const LoginPage = ({ onLogin }) => {
 
     try {
       if (supabase) {
+        // 🔹 Chamada ao Supabase via RPC (login_case_insensitive)
         const { data, error } = await supabase.rpc('login_case_insensitive', {
           p_nome_usuario: nome_usuario,
           p_senha: senha
         });
 
         if (error) throw new Error(`Erro no RPC: ${error.message}`);
-        
+
         if (data && data.length > 0) {
           const user = data[0];
+          let permissoesUsuario = {};
 
-          // ✅ Correção: garantir que o campo permissoes seja convertido para objeto JS
-          let permissoesUsuario = user.permissoes;
+          // ✅ Converter campo "permissoes" de string JSON para objeto
           try {
-            if (typeof permissoesUsuario === 'string') {
-              permissoesUsuario = JSON.parse(permissoesUsuario);
+            if (typeof user.permissoes === 'string') {
+              permissoesUsuario = JSON.parse(user.permissoes);
+            } else if (typeof user.permissoes === 'object' && user.permissoes !== null) {
+              permissoesUsuario = user.permissoes;
+            } else {
+              permissoesUsuario = {};
             }
           } catch (err) {
             console.warn('Falha ao parsear permissoes do usuário:', err);
-            permissoesUsuario = null;
+            permissoesUsuario = {};
           }
 
+          // ✅ Garantir que todas as permissões básicas existam
+          const permissoesPadrao = {
+            pode_ver_cadastros: false,
+            pode_ver_insights: false,
+            pode_gerenciar_usuarios: false,
+            pode_ver_log_atividades: false,
+            pode_usar_funcao_resgate: false,
+            pode_ver_todos_cadastros: false,
+            pode_ver_usuarios_ativos: false,
+            pode_ver_chat_supervisores: false,
+            ...permissoesUsuario
+          };
+
+          // ✅ Criar o objeto final do usuário
           const userInfo = {
             id: user.id,
-            vendedor: user.nome_usuario,
+            nome_usuario: user.nome_usuario,
             tipo_acesso: user.tipo_acesso,
             equipe: user.equipe,
-            permissoes: permissoesUsuario || { 
-              pode_ver_cadastros: false, 
-              pode_ver_insights: false 
-            }
+            permissoes: permissoesPadrao
           };
+
+          console.log("🔍 Permissões carregadas:", userInfo.permissoes);
 
           toast({
             title: "Login bem-sucedido!",
             description: `Bem-vindo(a) de volta, ${user.nome_usuario}!`,
           });
 
+          // 🔹 Envia o usuário para o App
           onLogin(userInfo);
         } else {
           throw new Error("Usuário ou senha inválidos.");
         }
+
       } else {
-        // 🔧 Fallback local (quando Supabase não está configurado)
+        // 🔧 Fallback local (modo offline)
         if (nome_usuario.toLowerCase() === 'admin' && senha.toLowerCase() === 'admin') {
           onLogin({ 
-            vendedor: 'Admin Local', 
+            nome_usuario: 'Admin Local', 
             tipo_acesso: 'admin', 
             equipe: 'SUPERVISOR', 
             permissoes: { 
               pode_ver_cadastros: true, 
-              pode_ver_insights: true 
+              pode_ver_insights: true, 
+              pode_ver_todos_cadastros: true, 
+              pode_gerenciar_usuarios: true 
             } 
           });
         } else if (nome_usuario.toLowerCase() === 'vendedor' && senha.toLowerCase() === 'vendedor') {
           onLogin({ 
-            vendedor: 'Vendedor Local', 
+            nome_usuario: 'Vendedor Local', 
             tipo_acesso: 'vendedor', 
             equipe: 'EQUIPE_A', 
             permissoes: { 
               pode_ver_cadastros: true, 
-              pode_ver_insights: false 
+              pode_ver_insights: false, 
+              pode_ver_todos_cadastros: false 
             } 
           });
         } else {
-          throw new Error("Usuário ou senha inválidos (localStorage).");
+          throw new Error("Usuário ou senha inválidos (modo local).");
         }
       }
+
     } catch (error) {
+      console.error('Erro de login:', error);
       toast({
         title: "Erro de Login",
-        description: error.message,
+        description: error.message || "Falha ao autenticar. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -109,6 +134,7 @@ const LoginPage = ({ onLogin }) => {
           <h1 className="text-3xl font-bold text-card-foreground">Bem-vindo(a) de volta!</h1>
           <p className="text-muted-foreground mt-2">Faça login para continuar</p>
         </div>
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="username">Usuário</Label>
@@ -125,6 +151,7 @@ const LoginPage = ({ onLogin }) => {
               />
             </div>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
             <div className="relative">
@@ -140,6 +167,7 @@ const LoginPage = ({ onLogin }) => {
               />
             </div>
           </div>
+
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-background"></div>
