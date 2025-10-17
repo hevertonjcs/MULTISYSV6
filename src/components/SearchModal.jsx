@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, FileDown } from 'lucide-react';
 import SearchModalFilters from '@/components/search-modal/SearchModalFilters';
@@ -13,16 +22,23 @@ import { generateFullReportPDF } from '@/fullReportGenerator';
 import { useToast } from '@/components/ui/use-toast';
 
 const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) => {
+  const { toast } = useToast();
+  const permissions = userInfo?.permissoes || {};
+
   const {
     cadastros,
     setCadastros,
     filteredCadastros,
     loading,
     loadCadastros,
-    searchTerm, setSearchTerm,
-    searchField, setSearchField,
-    statusFilter, setStatusFilter,
-    dateRange, setDateRange,
+    searchTerm,
+    setSearchTerm,
+    searchField,
+    setSearchField,
+    statusFilter,
+    setStatusFilter,
+    dateRange,
+    setDateRange,
   } = useCadastrosLoader({
     searchTerm: '',
     searchField: 'all',
@@ -32,6 +48,7 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
   });
 
   const cadastrosState = { cadastros, setCadastros };
+
   const {
     isDownloading,
     handleDownloadPDF,
@@ -52,68 +69,94 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
   const [cadastroToDelete, setCadastroToDelete] = useState(null);
   const [cadastroToChangeSeller, setCadastroToChangeSeller] = useState(null);
   const [isGeneratingFullReport, setIsGeneratingFullReport] = useState(false);
-  const { toast } = useToast();
 
+  // --------------------------------------------
+  // 🔄 Carrega cadastros quando o modal abre
+  // --------------------------------------------
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && permissions.pode_ver_cadastros) {
       loadCadastros();
+    } else if (isOpen && !permissions.pode_ver_cadastros) {
+      toast({
+        title: 'Acesso negado',
+        description: 'Você não possui permissão para visualizar cadastros.',
+        variant: 'destructive',
+      });
+      onClose();
     }
-  }, [isOpen, loadCadastros]);
+  }, [isOpen, loadCadastros, permissions, toast, onClose]);
 
+  // --------------------------------------------
+  // 🔄 Atualiza cadastro selecionado se houver mudança
+  // --------------------------------------------
   useEffect(() => {
     if (selectedCadastro) {
-        const updatedCadastro = cadastros.find(c => c.id === selectedCadastro.id);
-        if (updatedCadastro) {
-            setSelectedCadastro(updatedCadastro);
-        }
+      const updatedCadastro = cadastros.find((c) => c.id === selectedCadastro.id);
+      if (updatedCadastro) setSelectedCadastro(updatedCadastro);
     }
   }, [cadastros, selectedCadastro]);
 
+  // --------------------------------------------
+  // 🗑️ Exclusão segura com confirmação
+  // --------------------------------------------
   const confirmDeleteCadastro = useCallback(async () => {
     if (!cadastroToDelete) return;
     const deletedId = await handleDelete(cadastroToDelete);
-    if (deletedId) {
-      setCadastroToDelete(null); 
-    }
+    if (deletedId) setCadastroToDelete(null);
   }, [cadastroToDelete, handleDelete]);
 
-  const handleShowDetails = (cadastro) => {
-    setSelectedCadastro(cadastro);
-    setShowDetailsModal(true);
-  };
-
-  const handleSellerChangeSuccess = (updatedCadastro) => {
-    handleSellerUpdate(updatedCadastro);
-    setCadastroToChangeSeller(null);
-  };
-
+  // --------------------------------------------
+  // 📄 Geração de relatório completo (apenas se permitido)
+  // --------------------------------------------
   const handleGenerateFullReport = async () => {
-    if (filteredCadastros.length === 0) {
+    if (!permissions.pode_ver_todos_cadastros) {
       toast({
-        title: "Nenhum cadastro para exportar",
-        description: "Os filtros atuais não retornaram nenhum resultado.",
-        variant: "destructive"
+        title: 'Acesso negado',
+        description: 'Você não possui permissão para gerar relatórios completos.',
+        variant: 'destructive',
       });
       return;
     }
+
+    if (filteredCadastros.length === 0) {
+      toast({
+        title: 'Nenhum cadastro para exportar',
+        description: 'Os filtros atuais não retornaram nenhum resultado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsGeneratingFullReport(true);
     try {
       await generateFullReportPDF(filteredCadastros);
       toast({
-        title: "Relatório Gerado!",
-        description: "O PDF com todos os cadastros foi baixado com sucesso.",
+        title: 'Relatório Gerado!',
+        description: 'O PDF com todos os cadastros foi baixado com sucesso.',
       });
     } catch (error) {
       toast({
-        title: "Erro ao gerar relatório",
+        title: 'Erro ao gerar relatório',
         description: `Ocorreu um problema: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setIsGeneratingFullReport(false);
     }
   };
 
+  // --------------------------------------------
+  // 🧠 Lógica de permissões internas (para botões)
+  // --------------------------------------------
+  const canDelete = permissions.pode_gerenciar_usuarios || permissions.pode_ver_todos_cadastros;
+  const canEdit = permissions.pode_gerenciar_usuarios || permissions.pode_ver_todos_cadastros;
+  const canTransferSeller = permissions.pode_gerenciar_usuarios;
+  const canDownload = permissions.pode_ver_cadastros;
+  const canResendTelegram = permissions.pode_ver_todos_cadastros;
+
+  // --------------------------------------------
+  // 🎨 Renderização principal
+  // --------------------------------------------
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -143,14 +186,20 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
               <p className="text-sm text-card-foreground">
                 {filteredCadastros.length} cadastro(s) encontrado(s)
               </p>
-              <Button onClick={handleGenerateFullReport} size="sm" disabled={isGeneratingFullReport || loading}>
-                {isGeneratingFullReport ? (
-                  <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin mr-2" />
-                ) : (
-                  <FileDown className="w-4 h-4 mr-2" />
-                )}
-                {isGeneratingFullReport ? 'Gerando...' : 'Gerar Relatório Completo'}
-              </Button>
+              {permissions.pode_ver_todos_cadastros && (
+                <Button
+                  onClick={handleGenerateFullReport}
+                  size="sm"
+                  disabled={isGeneratingFullReport || loading}
+                >
+                  {isGeneratingFullReport ? (
+                    <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin mr-2" />
+                  ) : (
+                    <FileDown className="w-4 h-4 mr-2" />
+                  )}
+                  {isGeneratingFullReport ? 'Gerando...' : 'Gerar Relatório Completo'}
+                </Button>
+              )}
             </div>
 
             {loading ? (
@@ -160,22 +209,26 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
               </div>
             ) : filteredCadastros.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground text-lg">Nenhum cadastro encontrado com os filtros atuais.</p>
+                <p className="text-muted-foreground text-lg">
+                  Nenhum cadastro encontrado com os filtros atuais.
+                </p>
               </div>
             ) : (
               <div className="grid gap-2">
                 {filteredCadastros.map((cadastro) => (
                   <SearchModalListItem
-                    key={cadastro.id || cadastro.codigo_cadastro} 
+                    key={cadastro.id || cadastro.codigo_cadastro}
                     item={cadastro}
-                    onEdit={handleEdit}
-                    onGeneratePDF={handleDownloadPDF}
-                    onOpenChangeSellerModal={() => setCadastroToChangeSeller(cadastro)}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onGeneratePDF={canDownload ? handleDownloadPDF : undefined}
+                    onOpenChangeSellerModal={
+                      canTransferSeller ? () => setCadastroToChangeSeller(cadastro) : undefined
+                    }
                     userInfo={userInfo}
-                    onShowDetails={handleShowDetails}
-                    onStatusChange={handleStatusChange}
-                    onDownloadDocs={handleDownloadDocs}
-                    onCopyCadastro={handleCopyCadastro}
+                    onShowDetails={() => setShowDetailsModal(true) || setSelectedCadastro(cadastro)}
+                    onStatusChange={permissions.pode_gerenciar_usuarios ? handleStatusChange : undefined}
+                    onDownloadDocs={canDownload ? handleDownloadDocs : undefined}
+                    onCopyCadastro={permissions.pode_gerenciar_usuarios ? handleCopyCadastro : undefined}
                     isDownloading={isDownloading}
                   />
                 ))}
@@ -185,33 +238,42 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
         </DialogContent>
       </Dialog>
 
+      {/* 🔍 Detalhes */}
       <SearchModalDetails
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         cadastro={selectedCadastro}
-        onDownloadPDF={handleDownloadPDF}
-        onResendTelegram={handleResendTelegram}
-        onEdit={handleEdit}
-        onCopy={handleCopyCadastro}
-        onDelete={(cad) => { setShowDetailsModal(false); setTimeout(() => setCadastroToDelete(cad), 150);}}
-        onDownloadDocs={handleDownloadDocs}
-        onAddObservation={handleAddSupervisorObservation}
+        onDownloadPDF={canDownload ? handleDownloadPDF : undefined}
+        onResendTelegram={canResendTelegram ? handleResendTelegram : undefined}
+        onEdit={canEdit ? handleEdit : undefined}
+        onCopy={permissions.pode_gerenciar_usuarios ? handleCopyCadastro : undefined}
+        onDelete={canDelete ? (cad) => setCadastroToDelete(cad) : undefined}
+        onDownloadDocs={canDownload ? handleDownloadDocs : undefined}
+        onAddObservation={permissions.pode_ver_todos_cadastros ? handleAddSupervisorObservation : undefined}
         isDownloading={isDownloading}
         userInfo={userInfo}
       />
 
+      {/* 🗑️ Confirmação de exclusão */}
       {cadastroToDelete && (
         <AlertDialog open={!!cadastroToDelete} onOpenChange={() => setCadastroToDelete(null)}>
           <AlertDialogContent className="bg-card border-border text-card-foreground">
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
               <AlertDialogDescription className="text-muted-foreground">
-                Tem certeza que deseja apagar o cadastro de <span className="font-semibold">{cadastroToDelete.nome_completo}</span> (Código: {cadastroToDelete.codigo_cadastro})? Esta ação não pode ser desfeita. 
+                Tem certeza que deseja apagar o cadastro de{' '}
+                <span className="font-semibold">{cadastroToDelete.nome_completo}</span> (Código:{' '}
+                {cadastroToDelete.codigo_cadastro})? Esta ação não pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="text-card-foreground border-border hover:bg-muted">Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteCadastro} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              <AlertDialogCancel className="text-card-foreground border-border hover:bg-muted">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteCadastro}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Apagar
               </AlertDialogAction>
@@ -220,11 +282,15 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
         </AlertDialog>
       )}
 
+      {/* 👥 Alterar vendedor */}
       <ChangeSellerModal
         isOpen={!!cadastroToChangeSeller}
         onClose={() => setCadastroToChangeSeller(null)}
         cadastro={cadastroToChangeSeller}
-        onUpdate={handleSellerChangeSuccess}
+        onUpdate={(updatedCadastro) => {
+          handleSellerUpdate(updatedCadastro);
+          setCadastroToChangeSeller(null);
+        }}
       />
     </>
   );
