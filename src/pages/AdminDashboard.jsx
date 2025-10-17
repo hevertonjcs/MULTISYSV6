@@ -7,7 +7,7 @@ import {
   PlusCircle,
   Users,
   MessageSquare,
-  LifeBuoy
+  LifeBuoy,
 } from 'lucide-react';
 import WelcomeHeader from '@/components/WelcomeHeader';
 import ActiveUsersIndicator from '@/components/ActiveUsersIndicator';
@@ -24,28 +24,20 @@ const AdminDashboard = ({
   onShowRescueModal,
   hasUnreadMessages,
 }) => {
-
-  // Proteção contra erros: garante que userInfo sempre exista
   const permissions = userInfo?.permissoes || {};
 
-  // Identificadores de tipo de acesso
-  const tipo = userInfo?.tipo_acesso?.toLowerCase() || '';
-  const isAdmin = tipo === 'admin';
-  const isSupervisor = tipo === 'supervisor';
-
-  // 🔒 Controle de permissões
-  const canViewCadastros = isAdmin || permissions.pode_ver_cadastros;
-  const canViewInsights = isAdmin || permissions.pode_ver_insights;
-  const canManageUsers = isAdmin || permissions.pode_gerenciar_usuarios;
-  const canViewChat = isAdmin || permissions.pode_ver_chat_supervisores;
-  const canViewActiveUsers = isAdmin || permissions.pode_ver_usuarios_ativos;
-  const canViewActivityLog = isAdmin || permissions.pode_ver_log_atividades;
-  const canUseRescueFunction = isAdmin || permissions.pode_usar_funcao_resgate;
+  // 🔐 Permissões derivadas do Supabase
+  const canViewCadastros = permissions.pode_ver_cadastros;
+  const canViewInsights = permissions.pode_ver_insights;
+  const canManageUsers = permissions.pode_gerenciar_usuarios;
+  const canViewChat = permissions.pode_ver_chat_supervisores;
+  const canViewActiveUsers = permissions.pode_ver_usuarios_ativos;
+  const canViewActivityLog = permissions.pode_ver_log_atividades;
+  const canUseRescueFunction = permissions.pode_usar_funcao_resgate;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 text-foreground p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-
         {/* Cabeçalho */}
         <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <WelcomeHeader userInfo={userInfo} />
@@ -59,10 +51,9 @@ const AdminDashboard = ({
 
         {/* Conteúdo principal */}
         <main>
-          {/* Seção de botões */}
+          {/* Botões principais */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-
-            {/* Sempre disponível */}
+            {/* Sempre visível: criar cadastro */}
             <DashboardButton
               icon={<PlusCircle />}
               label="Novo Cadastro"
@@ -70,25 +61,15 @@ const AdminDashboard = ({
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             />
 
-            {/* Pesquisar Cadastros — depende da permissão */}
+            {/* Condicionais baseadas no Supabase */}
             {canViewCadastros && (
-              <DashboardButton
-                icon={<Search />}
-                label="Pesquisar Cadastros"
-                onClick={onShowSearch}
-              />
+              <DashboardButton icon={<Search />} label="Pesquisar Cadastros" onClick={onShowSearch} />
             )}
 
-            {/* Insights */}
             {canViewInsights && (
-              <DashboardButton
-                icon={<BarChart2 />}
-                label="Ver Insights"
-                onClick={onShowInsights}
-              />
+              <DashboardButton icon={<BarChart2 />} label="Ver Insights" onClick={onShowInsights} />
             )}
 
-            {/* Gerenciar Usuários */}
             {canManageUsers && (
               <DashboardButton
                 icon={<Users />}
@@ -97,7 +78,6 @@ const AdminDashboard = ({
               />
             )}
 
-            {/* Chat Supervisores */}
             {canViewChat && (
               <DashboardButton
                 icon={<MessageSquare />}
@@ -107,7 +87,6 @@ const AdminDashboard = ({
               />
             )}
 
-            {/* Função Resgate */}
             {canUseRescueFunction && (
               <DashboardButton
                 icon={<LifeBuoy />}
@@ -118,7 +97,7 @@ const AdminDashboard = ({
             )}
           </section>
 
-          {/* Seções de usuários ativos e logs */}
+          {/* Sessões inferiores (usuários ativos e logs) */}
           {(canViewActiveUsers || canViewActivityLog) && (
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {canViewActiveUsers && (
@@ -127,7 +106,7 @@ const AdminDashboard = ({
                 </div>
               )}
               {canViewActivityLog && (
-                <div className={canViewActiveUsers ? "lg:col-span-2" : "lg:col-span-3"}>
+                <div className={canViewActiveUsers ? 'lg:col-span-2' : 'lg:col-span-3'}>
                   <ActivityLogFeed userInfo={userInfo} />
                 </div>
               )}
@@ -139,7 +118,7 @@ const AdminDashboard = ({
   );
 };
 
-// Componente genérico para os botões principais do painel
+// 🔘 Componente de botão padrão do painel
 const DashboardButton = ({ icon, label, onClick, className = '', hasNotification = false }) => (
   <Button
     onClick={onClick}
