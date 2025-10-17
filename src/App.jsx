@@ -33,6 +33,7 @@ const App = () => {
 
   useDataMigrator(userInfo);
 
+  // Carregar configuração de logo
   useEffect(() => {
     const savedLogoConfig = localStorage.getItem('logoConfig');
     if (savedLogoConfig) {
@@ -44,6 +45,7 @@ const App = () => {
     }
   }, []);
 
+  // Testar conexão com Supabase
   useEffect(() => {
     const checkSupabaseConnection = async () => {
       if (supabase) {
@@ -56,16 +58,17 @@ const App = () => {
           });
         }
       } else {
-         toast({
-            title: "Supabase Não Configurado",
-            description: "As credenciais do Supabase não foram carregadas. O app usará localStorage.",
-            variant: "destructive",
-          });
+        toast({
+          title: "Supabase Não Configurado",
+          description: "As credenciais do Supabase não foram carregadas. O app usará localStorage.",
+          variant: "destructive",
+        });
       }
     };
     checkSupabaseConnection();
   }, [toast]);
-  
+
+  // Monitorar mensagens novas para admins/supervisores
   useEffect(() => {
     if (!userInfo || (userInfo.tipo_acesso !== 'admin' && !userInfo.permissoes?.pode_ver_chat_supervisores)) {
       return;
@@ -102,7 +105,7 @@ const App = () => {
       .channel('public:chat_messages:app')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
         if (payload.new.sender_name !== userInfo.vendedor) {
-            setHasUnreadMessages(true);
+          setHasUnreadMessages(true);
         }
       })
       .subscribe();
@@ -113,6 +116,7 @@ const App = () => {
 
   }, [userInfo]);
 
+  // 🔧 CORREÇÃO AQUI: Parsing robusto de permissões e fallback seguro
   const handleLogin = (loginData) => {
     const defaultPermissions = {
       pode_ver_todos_cadastros: true,
@@ -125,8 +129,25 @@ const App = () => {
       pode_usar_funcao_resgate: false,
     };
 
-    let permissions = loginData.permissoes ? { ...defaultPermissions, ...loginData.permissoes } : defaultPermissions;
+    // Converte string JSON para objeto
+    let parsedPermissoes = null;
+    try {
+      if (typeof loginData.permissoes === 'string') {
+        parsedPermissoes = JSON.parse(loginData.permissoes);
+      } else if (typeof loginData.permissoes === 'object' && loginData.permissoes !== null) {
+        parsedPermissoes = loginData.permissoes;
+      }
+    } catch (error) {
+      console.error("Erro ao parsear permissoes:", error, loginData.permissoes);
+      parsedPermissoes = null;
+    }
 
+    // Mescla permissões de forma segura
+    let permissions = parsedPermissoes
+      ? { ...defaultPermissions, ...parsedPermissoes }
+      : defaultPermissions;
+
+    // Ajustes automáticos conforme tipo de acesso
     if (loginData.tipo_acesso === 'admin') {
       permissions = {
         pode_ver_todos_cadastros: true,
@@ -140,13 +161,15 @@ const App = () => {
       };
     } else if (loginData.tipo_acesso === 'supervisor') {
       permissions.pode_ver_todos_cadastros = true;
+      permissions.pode_ver_chat_supervisores = true;
     }
 
-
+    // Define usuário logado
     setUserInfo({ ...loginData, permissoes: permissions });
     setCurrentScreen('admin_dashboard');
     setEditingCadastro(null);
 
+    // Presença online via Supabase Realtime
     if (supabase) {
       const channel = supabase.channel('online-users', {
         config: {
@@ -169,6 +192,7 @@ const App = () => {
     }
   };
 
+  // Logout
   const handleLogout = () => {
     if (presenceChannel) {
       presenceChannel.untrack();
@@ -180,6 +204,7 @@ const App = () => {
     setEditingCadastro(null);
   };
 
+  // Controles de navegação e modais
   const handleShowSearch = () => setShowSearchModal(true);
   const handleShowInsights = () => setShowInsightsModal(true);
   const handleShowUserManagement = () => setShowUserManagementModal(true);
@@ -229,6 +254,7 @@ const App = () => {
     setCurrentScreen('admin_dashboard');
   };
 
+  // Renderização das telas
   const renderScreen = () => {
     switch (currentScreen) {
       case 'login':
