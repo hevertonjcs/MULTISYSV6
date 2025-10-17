@@ -7,7 +7,7 @@ export const useCadastrosLoader = (initialFilters) => {
   const [cadastros, setCadastros] = useState([]);
   const [filteredCadastros, setFilteredCadastros] = useState([]);
   const [loading, setLoading] = useState(false);
-  
+
   const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm || '');
   const [searchField, setSearchField] = useState(initialFilters.searchField || 'all');
   const [statusFilter, setStatusFilter] = useState(initialFilters.statusFilter || 'all_status');
@@ -17,60 +17,67 @@ export const useCadastrosLoader = (initialFilters) => {
   // -----------------------------------------------
   // FILTROS LOCAIS (aplicados no front)
   // -----------------------------------------------
-  const filterAndSetCadastros = useCallback((allCadastros) => {
-    let filtered = allCadastros;
+  const filterAndSetCadastros = useCallback(
+    (allCadastros) => {
+      let filtered = allCadastros;
 
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      filtered = filtered.filter(cadastro => {
-        if (searchField === 'all') {
-          return (
-            (cadastro.nome_completo || '').toLowerCase().includes(lowerSearchTerm) || 
-            (cadastro.cpf || '').replace(/\D/g, '').includes(lowerSearchTerm.replace(/\D/g, '')) ||
-            (cadastro.telefone || '').replace(/\D/g, '').includes(lowerSearchTerm.replace(/\D/g, '')) ||
-            (cadastro.codigo_cadastro || '').toLowerCase().includes(lowerSearchTerm) || 
-            (cadastro.vendedor || '').toLowerCase().includes(lowerSearchTerm)
-          );
-        } else if (searchField === 'cpf' || searchField === 'telefone') {
-          return (cadastro[searchField] || '').replace(/\D/g, '').includes(lowerSearchTerm.replace(/\D/g, ''));
-        } else {
-          return (cadastro[searchField] || '').toLowerCase().includes(lowerSearchTerm);
-        }
-      });
-    }
+      // 🔍 Busca textual
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filtered = filtered.filter((cadastro) => {
+          if (searchField === 'all') {
+            return (
+              (cadastro.nome_completo || '').toLowerCase().includes(lowerSearchTerm) ||
+              (cadastro.cpf || '').replace(/\D/g, '').includes(lowerSearchTerm.replace(/\D/g, '')) ||
+              (cadastro.telefone || '').replace(/\D/g, '').includes(lowerSearchTerm.replace(/\D/g, '')) ||
+              (cadastro.codigo_cadastro || '').toLowerCase().includes(lowerSearchTerm) ||
+              (cadastro.vendedor || '').toLowerCase().includes(lowerSearchTerm)
+            );
+          } else if (searchField === 'cpf' || searchField === 'telefone') {
+            return (cadastro[searchField] || '')
+              .replace(/\D/g, '')
+              .includes(lowerSearchTerm.replace(/\D/g, ''));
+          } else {
+            return (cadastro[searchField] || '').toLowerCase().includes(lowerSearchTerm);
+          }
+        });
+      }
 
-    if (statusFilter && statusFilter !== 'all_status') {
-      filtered = filtered.filter(cadastro => {
-        const normalizedStatus = (cadastro.status_cliente || '')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/\s+/g, '_');
-        return normalizedStatus === statusFilter;
-      });
-    }
+      // 🔘 Filtro por status
+      if (statusFilter && statusFilter !== 'all_status') {
+        filtered = filtered.filter((cadastro) => {
+          const normalizedStatus = (cadastro.status_cliente || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '_');
+          return normalizedStatus === statusFilter;
+        });
+      }
 
-    if (dateRange.from || dateRange.to) {
-      const startDate = dateRange.from ? startOfDay(new Date(dateRange.from)) : null;
-      const endDate = dateRange.to ? endOfDay(new Date(dateRange.to)) : null;
+      // 📅 Filtro por data
+      if (dateRange.from || dateRange.to) {
+        const startDate = dateRange.from ? startOfDay(new Date(dateRange.from)) : null;
+        const endDate = dateRange.to ? endOfDay(new Date(dateRange.to)) : null;
 
-      filtered = filtered.filter(cadastro => {
-        if (!cadastro.data_cadastro) return false;
-        const cadastroDate = new Date(cadastro.data_cadastro);
-        
-        if (startDate && endDate) {
-          return cadastroDate >= startDate && cadastroDate <= endDate;
-        } else if (startDate) {
-          return cadastroDate >= startDate;
-        } else if (endDate) {
-          return cadastroDate <= endDate;
-        }
-        return true;
-      });
-    }
+        filtered = filtered.filter((cadastro) => {
+          if (!cadastro.data_cadastro) return false;
+          const cadastroDate = new Date(cadastro.data_cadastro);
 
-    setFilteredCadastros(filtered.sort((a, b) => new Date(b.data_cadastro) - new Date(a.data_cadastro)));
-  }, [searchTerm, searchField, statusFilter, dateRange]);
+          if (startDate && endDate) return cadastroDate >= startDate && cadastroDate <= endDate;
+          if (startDate) return cadastroDate >= startDate;
+          if (endDate) return cadastroDate <= endDate;
+          return true;
+        });
+      }
+
+      // 🧩 Ordenar por data mais recente
+      setFilteredCadastros(
+        filtered.sort((a, b) => new Date(b.data_cadastro) - new Date(a.data_cadastro))
+      );
+    },
+    [searchTerm, searchField, statusFilter, dateRange]
+  );
 
   // -----------------------------------------------
   // CARREGAR CADASTROS DO SUPABASE
@@ -80,21 +87,21 @@ export const useCadastrosLoader = (initialFilters) => {
 
     if (!supabase) {
       toast({
-        title: "Erro de Conexão",
-        description: "Cliente Supabase não está disponível.",
-        variant: "destructive",
+        title: 'Erro de Conexão',
+        description: 'Cliente Supabase não está disponível.',
+        variant: 'destructive',
       });
       setLoading(false);
       return;
     }
 
     try {
-      // Verifica se o usuário pode visualizar cadastros
+      // 🔒 Permissão geral de acesso
       if (!userInfo?.permissoes?.pode_ver_cadastros) {
         toast({
-          title: "Acesso negado",
-          description: "Você não possui permissão para visualizar cadastros.",
-          variant: "destructive",
+          title: 'Acesso negado',
+          description: 'Você não possui permissão para visualizar cadastros.',
+          variant: 'destructive',
         });
         setCadastros([]);
         setFilteredCadastros([]);
@@ -107,20 +114,17 @@ export const useCadastrosLoader = (initialFilters) => {
         .select('*')
         .order('data_cadastro', { ascending: false });
 
-      // Aplica filtro de permissões
-      if (userInfo) {
-        const tipo = userInfo.tipo_acesso?.toLowerCase() || '';
+      const tipo = userInfo.tipo_acesso?.toLowerCase() || '';
 
-        // Se o usuário NÃO for admin e NÃO tiver permissão para ver todos
-        if (tipo !== 'admin' && tipo !== 'supervisor') {
-          if (!userInfo.permissoes?.pode_ver_todos_cadastros) {
-            query = query.eq('vendedor', userInfo.nome_usuario);
-          }
+      // 🧩 Regras de permissão dinâmica
+      if (tipo !== 'admin') {
+        // Se o usuário não tiver permissão para ver todos os cadastros
+        if (!userInfo.permissoes?.pode_ver_todos_cadastros) {
+          query = query.ilike('vendedor', userInfo.nome_usuario); // case-insensitive
         }
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
       setCadastros(data || []);
@@ -128,9 +132,9 @@ export const useCadastrosLoader = (initialFilters) => {
     } catch (error) {
       console.error('Erro ao carregar cadastros:', error);
       toast({
-        title: "Erro Supabase",
+        title: 'Erro Supabase',
         description: `Falha ao carregar dados: ${error.message}.`,
-        variant: "destructive",
+        variant: 'destructive',
       });
       setCadastros([]);
       filterAndSetCadastros([]);
@@ -155,10 +159,14 @@ export const useCadastrosLoader = (initialFilters) => {
     filteredCadastros,
     loading,
     loadCadastros,
-    searchTerm, setSearchTerm,
-    searchField, setSearchField,
-    statusFilter, setStatusFilter,
-    dateRange, setDateRange,
-    filterAndSetCadastros
+    searchTerm,
+    setSearchTerm,
+    searchField,
+    setSearchField,
+    statusFilter,
+    setStatusFilter,
+    dateRange,
+    setDateRange,
+    filterAndSetCadastros,
   };
 };
