@@ -28,27 +28,60 @@ const LoginPage = ({ onLogin }) => {
         
         if (data && data.length > 0) {
           const user = data[0];
+
+          // ✅ Correção: garantir que o campo permissoes seja convertido para objeto JS
+          let permissoesUsuario = user.permissoes;
+          try {
+            if (typeof permissoesUsuario === 'string') {
+              permissoesUsuario = JSON.parse(permissoesUsuario);
+            }
+          } catch (err) {
+            console.warn('Falha ao parsear permissoes do usuário:', err);
+            permissoesUsuario = null;
+          }
+
           const userInfo = {
             id: user.id,
             vendedor: user.nome_usuario,
             tipo_acesso: user.tipo_acesso,
             equipe: user.equipe,
-            permissoes: user.permissoes || { pode_ver_cadastros: false, pode_ver_insights: false }
+            permissoes: permissoesUsuario || { 
+              pode_ver_cadastros: false, 
+              pode_ver_insights: false 
+            }
           };
+
           toast({
             title: "Login bem-sucedido!",
             description: `Bem-vindo(a) de volta, ${user.nome_usuario}!`,
           });
+
           onLogin(userInfo);
         } else {
           throw new Error("Usuário ou senha inválidos.");
         }
       } else {
-        // Fallback para localStorage se Supabase não estiver configurado
+        // 🔧 Fallback local (quando Supabase não está configurado)
         if (nome_usuario.toLowerCase() === 'admin' && senha.toLowerCase() === 'admin') {
-          onLogin({ vendedor: 'Admin Local', tipo_acesso: 'admin', equipe: 'SUPERVISOR', permissoes: { pode_ver_cadastros: true, pode_ver_insights: true } });
+          onLogin({ 
+            vendedor: 'Admin Local', 
+            tipo_acesso: 'admin', 
+            equipe: 'SUPERVISOR', 
+            permissoes: { 
+              pode_ver_cadastros: true, 
+              pode_ver_insights: true 
+            } 
+          });
         } else if (nome_usuario.toLowerCase() === 'vendedor' && senha.toLowerCase() === 'vendedor') {
-          onLogin({ vendedor: 'Vendedor Local', tipo_acesso: 'vendedor', equipe: 'EQUIPE_A', permissoes: { pode_ver_cadastros: true, pode_ver_insights: false } });
+          onLogin({ 
+            vendedor: 'Vendedor Local', 
+            tipo_acesso: 'vendedor', 
+            equipe: 'EQUIPE_A', 
+            permissoes: { 
+              pode_ver_cadastros: true, 
+              pode_ver_insights: false 
+            } 
+          });
         } else {
           throw new Error("Usuário ou senha inválidos (localStorage).");
         }
