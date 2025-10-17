@@ -19,10 +19,10 @@ const LoginPage = ({ onLogin }) => {
 
     try {
       if (supabase) {
-        // 🔹 Login via Supabase RPC (verifica usuário e senha)
+        // 🔹 Login via função RPC no Supabase
         const { data, error } = await supabase.rpc('login_case_insensitive', {
           p_nome_usuario: nome_usuario,
-          p_senha: senha
+          p_senha: senha,
         });
 
         if (error) throw new Error(`Erro no RPC: ${error.message}`);
@@ -31,7 +31,7 @@ const LoginPage = ({ onLogin }) => {
           const user = data[0];
           let permissoesUsuario = {};
 
-          // ✅ Converter "permissoes" de string JSON para objeto JS
+          // ✅ Converter JSON de permissões
           try {
             if (typeof user.permissoes === 'string') {
               permissoesUsuario = JSON.parse(user.permissoes);
@@ -41,11 +41,11 @@ const LoginPage = ({ onLogin }) => {
               permissoesUsuario = {};
             }
           } catch (err) {
-            console.warn('Falha ao parsear permissoes do usuário:', err);
+            console.warn('⚠️ Falha ao parsear permissões:', err);
             permissoesUsuario = {};
           }
 
-          // ✅ Garante que todas as permissões esperadas existam
+          // ✅ Garantir estrutura completa de permissões
           const permissoesPadrao = {
             pode_ver_cadastros: false,
             pode_ver_insights: false,
@@ -58,32 +58,39 @@ const LoginPage = ({ onLogin }) => {
             ...permissoesUsuario,
           };
 
-          // ✅ Monta o objeto final de usuário
+          // ✅ Garante compatibilidade com diferentes nomes de campo
+          const nomeFinal =
+            user.nome_usuario || user.nome || user.usuario || user.vendedor || 'Usuário';
+
+          // ✅ Monta o objeto do usuário logado
           const userInfo = {
             id: user.id,
-            nome_usuario: user.nome_usuario,
-            tipo_acesso: user.tipo_acesso,
-            equipe: user.equipe,
+            nome_usuario: nomeFinal,
+            vendedor: nomeFinal, // 🔥 fundamental p/ filtrar cadastros e exibir no header
+            tipo_acesso: user.tipo_acesso || 'vendedor',
+            equipe: user.equipe || '',
             permissoes: permissoesPadrao,
           };
 
-          console.log('🔍 Permissões carregadas do Supabase:', userInfo.permissoes);
+          console.log('✅ Usuário logado:', userInfo);
+          console.log('🔑 Permissões carregadas:', userInfo.permissoes);
 
           toast({
             title: 'Login bem-sucedido!',
-            description: `Bem-vindo(a) de volta, ${user.nome_usuario}!`,
+            description: `Bem-vindo(a) de volta, ${nomeFinal}!`,
           });
 
-          // 🔹 Envia o usuário autenticado para o App
+          // 🔹 Envia dados do usuário autenticado
           onLogin(userInfo);
         } else {
           throw new Error('Usuário ou senha inválidos.');
         }
       } else {
-        // 🔧 Fallback local (modo offline para testes)
+        // 🔧 Fallback local (modo offline)
         if (nome_usuario.toLowerCase() === 'admin' && senha.toLowerCase() === 'admin') {
           onLogin({
             nome_usuario: 'Admin Local',
+            vendedor: 'Admin Local',
             tipo_acesso: 'admin',
             equipe: 'SUPERVISOR',
             permissoes: {
@@ -91,17 +98,27 @@ const LoginPage = ({ onLogin }) => {
               pode_ver_insights: true,
               pode_ver_todos_cadastros: true,
               pode_gerenciar_usuarios: true,
+              pode_usar_funcao_resgate: true,
+              pode_ver_log_atividades: true,
+              pode_ver_usuarios_ativos: true,
+              pode_ver_chat_supervisores: true,
             },
           });
         } else if (nome_usuario.toLowerCase() === 'vendedor' && senha.toLowerCase() === 'vendedor') {
           onLogin({
             nome_usuario: 'Vendedor Local',
+            vendedor: 'Vendedor Local',
             tipo_acesso: 'vendedor',
             equipe: 'EQUIPE_A',
             permissoes: {
               pode_ver_cadastros: true,
               pode_ver_insights: false,
               pode_ver_todos_cadastros: false,
+              pode_gerenciar_usuarios: false,
+              pode_usar_funcao_resgate: false,
+              pode_ver_log_atividades: false,
+              pode_ver_usuarios_ativos: false,
+              pode_ver_chat_supervisores: false,
             },
           });
         } else {
@@ -109,7 +126,7 @@ const LoginPage = ({ onLogin }) => {
         }
       }
     } catch (error) {
-      console.error('Erro de login:', error);
+      console.error('❌ Erro de login:', error);
       toast({
         title: 'Erro de Login',
         description: error.message || 'Falha ao autenticar. Tente novamente.',
