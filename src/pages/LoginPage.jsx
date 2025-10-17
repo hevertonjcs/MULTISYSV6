@@ -19,7 +19,7 @@ const LoginPage = ({ onLogin }) => {
 
     try {
       if (supabase) {
-        // 🔹 Chamada ao Supabase via RPC (login_case_insensitive)
+        // 🔹 Login via Supabase RPC (verifica usuário e senha)
         const { data, error } = await supabase.rpc('login_case_insensitive', {
           p_nome_usuario: nome_usuario,
           p_senha: senha
@@ -31,7 +31,7 @@ const LoginPage = ({ onLogin }) => {
           const user = data[0];
           let permissoesUsuario = {};
 
-          // ✅ Converter campo "permissoes" de string JSON para objeto
+          // ✅ Converter "permissoes" de string JSON para objeto JS
           try {
             if (typeof user.permissoes === 'string') {
               permissoesUsuario = JSON.parse(user.permissoes);
@@ -45,7 +45,7 @@ const LoginPage = ({ onLogin }) => {
             permissoesUsuario = {};
           }
 
-          // ✅ Garantir que todas as permissões básicas existam
+          // ✅ Garante que todas as permissões esperadas existam
           const permissoesPadrao = {
             pode_ver_cadastros: false,
             pode_ver_insights: false,
@@ -55,67 +55,65 @@ const LoginPage = ({ onLogin }) => {
             pode_ver_todos_cadastros: false,
             pode_ver_usuarios_ativos: false,
             pode_ver_chat_supervisores: false,
-            ...permissoesUsuario
+            ...permissoesUsuario,
           };
 
-          // ✅ Criar o objeto final do usuário
+          // ✅ Monta o objeto final de usuário
           const userInfo = {
             id: user.id,
             nome_usuario: user.nome_usuario,
             tipo_acesso: user.tipo_acesso,
             equipe: user.equipe,
-            permissoes: permissoesPadrao
+            permissoes: permissoesPadrao,
           };
 
-          console.log("🔍 Permissões carregadas:", userInfo.permissoes);
+          console.log('🔍 Permissões carregadas do Supabase:', userInfo.permissoes);
 
           toast({
-            title: "Login bem-sucedido!",
+            title: 'Login bem-sucedido!',
             description: `Bem-vindo(a) de volta, ${user.nome_usuario}!`,
           });
 
-          // 🔹 Envia o usuário para o App
+          // 🔹 Envia o usuário autenticado para o App
           onLogin(userInfo);
         } else {
-          throw new Error("Usuário ou senha inválidos.");
+          throw new Error('Usuário ou senha inválidos.');
         }
-
       } else {
-        // 🔧 Fallback local (modo offline)
+        // 🔧 Fallback local (modo offline para testes)
         if (nome_usuario.toLowerCase() === 'admin' && senha.toLowerCase() === 'admin') {
-          onLogin({ 
-            nome_usuario: 'Admin Local', 
-            tipo_acesso: 'admin', 
-            equipe: 'SUPERVISOR', 
-            permissoes: { 
-              pode_ver_cadastros: true, 
-              pode_ver_insights: true, 
-              pode_ver_todos_cadastros: true, 
-              pode_gerenciar_usuarios: true 
-            } 
+          onLogin({
+            nome_usuario: 'Admin Local',
+            tipo_acesso: 'admin',
+            equipe: 'SUPERVISOR',
+            permissoes: {
+              pode_ver_cadastros: true,
+              pode_ver_insights: true,
+              pode_ver_todos_cadastros: true,
+              pode_gerenciar_usuarios: true,
+            },
           });
         } else if (nome_usuario.toLowerCase() === 'vendedor' && senha.toLowerCase() === 'vendedor') {
-          onLogin({ 
-            nome_usuario: 'Vendedor Local', 
-            tipo_acesso: 'vendedor', 
-            equipe: 'EQUIPE_A', 
-            permissoes: { 
-              pode_ver_cadastros: true, 
-              pode_ver_insights: false, 
-              pode_ver_todos_cadastros: false 
-            } 
+          onLogin({
+            nome_usuario: 'Vendedor Local',
+            tipo_acesso: 'vendedor',
+            equipe: 'EQUIPE_A',
+            permissoes: {
+              pode_ver_cadastros: true,
+              pode_ver_insights: false,
+              pode_ver_todos_cadastros: false,
+            },
           });
         } else {
-          throw new Error("Usuário ou senha inválidos (modo local).");
+          throw new Error('Usuário ou senha inválidos (modo local).');
         }
       }
-
     } catch (error) {
       console.error('Erro de login:', error);
       toast({
-        title: "Erro de Login",
-        description: error.message || "Falha ao autenticar. Tente novamente.",
-        variant: "destructive",
+        title: 'Erro de Login',
+        description: error.message || 'Falha ao autenticar. Tente novamente.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -127,7 +125,7 @@ const LoginPage = ({ onLogin }) => {
       <motion.div
         initial={{ opacity: 0, y: -50, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-md p-8 space-y-6 bg-card rounded-2xl shadow-2xl border border-border/20"
       >
         <div className="text-center">
