@@ -1,9 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { EventEmitter } from 'events'; // ✅ Import do EventEmitter
 import { toast } from '@/components/ui/use-toast'; 
-
-// ✅ Aumenta o limite de listeners globais para evitar warnings
-EventEmitter.defaultMaxListeners = 50;
 
 const supabaseUrlFromEnv = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKeyFromEnv = import.meta.env.VITE_SUPABASE_ANON_KEY;
