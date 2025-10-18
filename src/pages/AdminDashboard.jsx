@@ -13,6 +13,12 @@ import WelcomeHeader from '@/components/WelcomeHeader';
 import ActiveUsersIndicator from '@/components/ActiveUsersIndicator';
 import ActivityLogFeed from '@/components/ActivityLogFeed';
 
+/**
+ * ✅ AdminDashboard atualizado:
+ * - Recebe o `presenceChannel` direto do App.jsx.
+ * - Passa o canal para o `ActiveUsersIndicator` (mostra usuários online em tempo real).
+ * - Mantém todas as permissões e comportamentos originais.
+ */
 const AdminDashboard = ({
   userInfo,
   onLogout,
@@ -23,6 +29,7 @@ const AdminDashboard = ({
   onShowSupervisorChat,
   onShowRescueModal,
   hasUnreadMessages,
+  presenceChannel, // 🆕 Canal de presença vindo do App.jsx
 }) => {
   const permissions = userInfo?.permissoes || {};
 
@@ -38,7 +45,7 @@ const AdminDashboard = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 text-foreground p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Cabeçalho */}
+        {/* ---------------- HEADER ---------------- */}
         <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <WelcomeHeader userInfo={userInfo} />
           <div className="flex items-center gap-2">
@@ -49,11 +56,11 @@ const AdminDashboard = ({
           </div>
         </header>
 
-        {/* Conteúdo principal */}
+        {/* ---------------- MAIN CONTENT ---------------- */}
         <main>
-          {/* Botões principais */}
+          {/* 🔘 Botões principais do dashboard */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {/* Sempre visível: criar cadastro */}
+            {/* Sempre visível */}
             <DashboardButton
               icon={<PlusCircle />}
               label="Novo Cadastro"
@@ -61,7 +68,7 @@ const AdminDashboard = ({
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             />
 
-            {/* Condicionais baseadas no Supabase */}
+            {/* Condicionais com base nas permissões */}
             {canViewCadastros && (
               <DashboardButton icon={<Search />} label="Pesquisar Cadastros" onClick={onShowSearch} />
             )}
@@ -97,14 +104,17 @@ const AdminDashboard = ({
             )}
           </section>
 
-          {/* Sessões inferiores (usuários ativos e logs) */}
+          {/* ---------------- SESSÕES INFERIORES ---------------- */}
           {(canViewActiveUsers || canViewActivityLog) && (
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 🟢 Indicador de usuários online */}
               {canViewActiveUsers && (
                 <div className="lg:col-span-1">
-                  <ActiveUsersIndicator />
+                  <ActiveUsersIndicator presenceChannel={presenceChannel} />
                 </div>
               )}
+
+              {/* 📜 Histórico de atividades */}
               {canViewActivityLog && (
                 <div className={canViewActiveUsers ? 'lg:col-span-2' : 'lg:col-span-3'}>
                   <ActivityLogFeed userInfo={userInfo} />
@@ -118,7 +128,10 @@ const AdminDashboard = ({
   );
 };
 
-// 🔘 Componente de botão padrão do painel
+/**
+ * 🔘 Componente padrão para botões do dashboard
+ * Mantém estilo visual consistente e suporte a notificações.
+ */
 const DashboardButton = ({ icon, label, onClick, className = '', hasNotification = false }) => (
   <Button
     onClick={onClick}
