@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
  * - Recebe `presenceChannel` do App.jsx (não cria um novo)
  * - Reage automaticamente a eventos de presença
  * - Exibe usuários online em tempo real
+ * - Evita erros "off is not a function" e vazamentos de listeners
  */
 const ActiveUsersIndicator = ({ presenceChannel }) => {
   const [activeUsers, setActiveUsers] = useState([]);
@@ -16,31 +17,35 @@ const ActiveUsersIndicator = ({ presenceChannel }) => {
     if (!presenceChannel) return;
 
     const updateUsers = () => {
-      const presenceState = presenceChannel.presenceState();
+      const presenceState = presenceChannel.presenceState?.() || {};
       const users = Object.keys(presenceState)
         .map((key) => {
           const presences = presenceState[key];
-          return presences.length > 0 ? presences[0] : null;
+          return presences?.length > 0 ? presences[0] : null;
         })
         .filter((user) => user !== null);
 
       setActiveUsers(users);
     };
 
-    // Escuta os eventos de presença
+    // 🔔 Escuta os eventos de presença em tempo real
     presenceChannel
-      .on('presence', { event: 'sync' }, () => updateUsers())
+      .on('presence', { event: 'sync' }, updateUsers)
       .on('presence', { event: 'join' }, () => setTimeout(updateUsers, 100))
-      .on('presence', { event: 'leave' }, () => updateUsers());
+      .on('presence', { event: 'leave' }, updateUsers);
 
-    // Atualiza a lista inicial
+    // Atualiza lista inicial
     setTimeout(updateUsers, 200);
 
-    // Cleanup
+    // 🧹 Cleanup seguro
     return () => {
-      presenceChannel.off('presence', { event: 'sync' });
-      presenceChannel.off('presence', { event: 'join' });
-      presenceChannel.off('presence', { event: 'leave' });
+      try {
+        // Usa unsubscribe do Supabase Realtime v2 (mais seguro que .off)
+        presenceChannel.unsubscribe?.();
+        console.log('🧹 Canal de presença limpo com segurança.');
+      } catch (err) {
+        console.warn('⚠️ Erro ao limpar canal de presença:', err);
+      }
     };
   }, [presenceChannel]);
 
