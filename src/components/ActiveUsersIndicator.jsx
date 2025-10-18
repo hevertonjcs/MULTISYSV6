@@ -4,11 +4,10 @@ import { User, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * ✅ Componente atualizado:
- * - Recebe `presenceChannel` do App.jsx (não cria um novo)
- * - Reage automaticamente a eventos de presença
- * - Exibe usuários online em tempo real
- * - Evita erros "off is not a function" e vazamentos de listeners
+ * ✅ Versão finalizada e blindada contra vazamentos:
+ * - Usa presenceChannel do App.jsx (não cria outro)
+ * - Faz cleanup completo e seguro
+ * - Elimina warning de EventEmitter leak
  */
 const ActiveUsersIndicator = ({ presenceChannel }) => {
   const [activeUsers, setActiveUsers] = useState([]);
@@ -16,33 +15,44 @@ const ActiveUsersIndicator = ({ presenceChannel }) => {
   useEffect(() => {
     if (!presenceChannel) return;
 
-    const updateUsers = () => {
-      const presenceState = presenceChannel.presenceState?.() || {};
-      const users = Object.keys(presenceState)
-        .map((key) => {
-          const presences = presenceState[key];
-          return presences?.length > 0 ? presences[0] : null;
-        })
-        .filter((user) => user !== null);
+    console.log('👥 Monitorando canal de presença...');
 
-      setActiveUsers(users);
+    const updateUsers = () => {
+      try {
+        const presenceState = presenceChannel.presenceState?.() || {};
+        const users = Object.keys(presenceState)
+          .map((key) => {
+            const presences = presenceState[key];
+            return presences?.length > 0 ? presences[0] : null;
+          })
+          .filter(Boolean);
+
+        setActiveUsers(users);
+      } catch (err) {
+        console.warn('⚠️ Falha ao atualizar lista de usuários:', err);
+      }
     };
 
-    // 🔔 Escuta os eventos de presença em tempo real
+    // 🔄 Escuta eventos de presença
+    const syncHandler = () => updateUsers();
+    const joinHandler = () => setTimeout(updateUsers, 150);
+    const leaveHandler = () => updateUsers();
+
     presenceChannel
-      .on('presence', { event: 'sync' }, updateUsers)
-      .on('presence', { event: 'join' }, () => setTimeout(updateUsers, 100))
-      .on('presence', { event: 'leave' }, updateUsers);
+      .on('presence', { event: 'sync' }, syncHandler)
+      .on('presence', { event: 'join' }, joinHandler)
+      .on('presence', { event: 'leave' }, leaveHandler);
 
-    // Atualiza lista inicial
-    setTimeout(updateUsers, 200);
+    // Atualiza na inicialização
+    setTimeout(updateUsers, 300);
 
-    // 🧹 Cleanup seguro
+    // 🧹 Cleanup completo e seguro
     return () => {
       try {
-        // Usa unsubscribe do Supabase Realtime v2 (mais seguro que .off)
-        presenceChannel.unsubscribe?.();
-        console.log('🧹 Canal de presença limpo com segurança.');
+        console.log('🧹 Limpando listeners de presença...');
+        presenceChannel.removeAllListeners?.(); // remove todos os eventos do canal
+        presenceChannel.unsubscribe?.(); // encerra o canal
+        setActiveUsers([]); // reseta a lista para garantir tela limpa
       } catch (err) {
         console.warn('⚠️ Erro ao limpar canal de presença:', err);
       }
