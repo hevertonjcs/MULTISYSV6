@@ -1,68 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/supabaseClient';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * 🟢 ActiveUsersIndicator — Versão otimizada e sincronizada com o canal centralizado do App
- *
- * - Se receber `presenceChannel` como prop, usa ele (não cria outro)
- * - Se não receber (modo fallback), cria um novo canal local
- * - Mostra usuários online em tempo real
+ * ✅ Componente atualizado:
+ * - Recebe `presenceChannel` do App.jsx (não cria um novo)
+ * - Reage automaticamente a eventos de presença
+ * - Exibe usuários online em tempo real
  */
 const ActiveUsersIndicator = ({ presenceChannel }) => {
   const [activeUsers, setActiveUsers] = useState([]);
-  const [localChannel, setLocalChannel] = useState(null);
 
   useEffect(() => {
-    // 🧠 Define qual canal será usado
-    const channel = presenceChannel
-      ? presenceChannel
-      : supabase.channel('online-users', {
-          config: {
-            presence: { key: 'anon' },
-          },
-        });
+    if (!presenceChannel) return;
 
-    if (!presenceChannel) {
-      // 🔧 Se for canal local (fallback), inscreve para sincronizar
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('📡 Canal de presença local ativo (fallback)');
-        }
-      });
-      setLocalChannel(channel);
-    }
-
-    // 🧩 Atualiza lista de usuários ativos
     const updateUsers = () => {
-      try {
-        const state = channel.presenceState();
-        const users = Object.keys(state)
-          .map((key) => state[key][0]) // pega o primeiro registro de cada chave
-          .filter(Boolean);
-        setActiveUsers(users);
-      } catch (err) {
-        console.error('Erro ao atualizar lista de usuários ativos:', err);
-      }
+      const presenceState = presenceChannel.presenceState();
+      const users = Object.keys(presenceState)
+        .map((key) => {
+          const presences = presenceState[key];
+          return presences.length > 0 ? presences[0] : null;
+        })
+        .filter((user) => user !== null);
+
+      setActiveUsers(users);
     };
 
-    // 🔄 Escuta eventos de presença
-    channel
-      .on('presence', { event: 'sync' }, updateUsers)
+    // Escuta os eventos de presença
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => updateUsers())
       .on('presence', { event: 'join' }, () => setTimeout(updateUsers, 100))
-      .on('presence', { event: 'leave' }, updateUsers);
+      .on('presence', { event: 'leave' }, () => updateUsers());
 
-    // 🚀 Atualiza na inicialização
-    updateUsers();
+    // Atualiza a lista inicial
+    setTimeout(updateUsers, 200);
 
-    // 🧹 Limpeza segura
+    // Cleanup
     return () => {
-      console.log('🧹 Limpando listener de ActiveUsersIndicator...');
-      if (!presenceChannel && localChannel) {
-        supabase.removeChannel(localChannel);
-      }
+      presenceChannel.off('presence', { event: 'sync' });
+      presenceChannel.off('presence', { event: 'join' });
+      presenceChannel.off('presence', { event: 'leave' });
     };
   }, [presenceChannel]);
 
@@ -81,7 +59,7 @@ const ActiveUsersIndicator = ({ presenceChannel }) => {
             {activeUsers.length > 0 ? (
               activeUsers.map((user, index) => (
                 <motion.div
-                  key={user.user_name || `user-${index}`}
+                  key={user.user_name || index}
                   layout
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -95,7 +73,7 @@ const ActiveUsersIndicator = ({ presenceChannel }) => {
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-foreground">
-                      {user.user_name || 'Usuário Desconhecido'}
+                      {user.user_name || 'Usuário'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {user.equipe || 'Sem equipe'}
