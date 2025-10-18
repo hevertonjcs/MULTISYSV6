@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary'; // ✅ Importa o novo ErrorBoundary
 import { Toaster } from '@/components/ui/toaster';
 import LoginPage from '@/pages/LoginPage';
 import FormPage from '@/pages/FormPage';
@@ -74,7 +75,7 @@ const useDynamicMeta = () => {
 };
 
 /* 🌐 Componente principal */
-const App = () => {
+const AppContent = () => {
   // ---------------------------
   // 🧠 Estados Globais
   // ---------------------------
@@ -169,26 +170,17 @@ const App = () => {
   };
 
   // ---------------------------
-  // 🚪 Logout com limpeza SEGURA e sem tela branca
+  // 🚪 Logout com limpeza SEGURA
   // ---------------------------
   const handleLogout = async () => {
     try {
       console.log('🔄 Iniciando processo de logout seguro...');
 
-      // ✅ Remove canais Realtime (caso existam)
-      if (presenceChannel) {
-        await supabase.removeChannel(presenceChannel);
-        console.log('🧹 Canal de presença encerrado.');
-      }
-      if (chatChannel) {
-        await supabase.removeChannel(chatChannel);
-        console.log('🧹 Canal de chat encerrado.');
-      }
+      if (presenceChannel) await supabase.removeChannel(presenceChannel);
+      if (chatChannel) await supabase.removeChannel(chatChannel);
 
-      // ✅ Limpa localStorage e estados persistentes
       localStorage.clear();
 
-      // ✅ Reseta todos os estados críticos
       setHasUnreadMessages(false);
       setEditingCadastro(null);
       setShowInsightsModal(false);
@@ -196,16 +188,10 @@ const App = () => {
       setShowRescueModal(false);
       setShowUserManagementModal(false);
       setShowSupervisorChatModal(false);
-
-      // ✅ Redefine o usuário e a tela atual
       setUserInfo(null);
       setCurrentScreen('login');
 
-      // ✅ Força atualização visual leve (sem reload completo)
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 200);
-
+      setTimeout(() => window.scrollTo(0, 0), 200);
       console.log('✅ Logout concluído com segurança!');
     } catch (error) {
       console.error('❌ Erro ao deslogar:', error);
@@ -218,57 +204,7 @@ const App = () => {
   };
 
   // ---------------------------
-  // ⚙️ Abertura de modais
-  // ---------------------------
-  const handleShowSearch = () => setShowSearchModal(true);
-  const handleShowInsights = () => setShowInsightsModal(true);
-  const handleShowUserManagement = () => setShowUserManagementModal(true);
-  const handleShowRescueModal = () => setShowRescueModal(true);
-  const handleShowSupervisorChat = () => {
-    setShowSupervisorChatModal(true);
-    setHasUnreadMessages(false);
-    localStorage.setItem('lastSeenChatTimestamp', new Date().toISOString());
-  };
-
-  // ---------------------------
-  // ✏️ Edição e formulários
-  // ---------------------------
-  const handleEditCadastroRequest = useCallback(
-    (cadastroData) => {
-      const mappedData = {};
-      for (const key in initialFormData) mappedData[key] = cadastroData[key] || initialFormData[key];
-      if (userInfo) {
-        mappedData.vendedor = cadastroData.vendedor || userInfo.vendedor;
-        mappedData.equipe = cadastroData.equipe || userInfo.equipe;
-      }
-      setEditingCadastro(mappedData);
-      setCurrentScreen('form');
-      setShowSearchModal(false);
-      toast({
-        title: 'Modo de Edição',
-        description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}`,
-      });
-    },
-    [userInfo, toast]
-  );
-
-  const handleFormSubmissionSuccess = () => {
-    setEditingCadastro(null);
-    if (userInfo?.tipo_acesso) setCurrentScreen('admin_dashboard');
-  };
-
-  const handleNavigateToForm = () => {
-    setEditingCadastro(null);
-    setCurrentScreen('form');
-  };
-
-  const handleBackToDashboard = () => {
-    setEditingCadastro(null);
-    setCurrentScreen('admin_dashboard');
-  };
-
-  // ---------------------------
-  // 🖥️ Renderização de telas
+  // Renderização de telas
   // ---------------------------
   const renderScreen = () => {
     try {
@@ -282,8 +218,11 @@ const App = () => {
               onLogout={handleLogout}
               logoConfig={logoConfig}
               initialDataForEdit={editingCadastro}
-              onSubmissionSuccess={handleFormSubmissionSuccess}
-              onBackToDashboard={handleBackToDashboard}
+              onSubmissionSuccess={() => {
+                setEditingCadastro(null);
+                setCurrentScreen('admin_dashboard');
+              }}
+              onBackToDashboard={() => setCurrentScreen('admin_dashboard')}
             />
           );
         case 'admin_dashboard':
@@ -292,12 +231,16 @@ const App = () => {
             <AdminDashboard
               userInfo={userInfo}
               onLogout={handleLogout}
-              onShowSearch={handleShowSearch}
-              onShowInsights={handleShowInsights}
-              onNavigateToForm={handleNavigateToForm}
-              onShowUserManagement={handleShowUserManagement}
-              onShowSupervisorChat={handleShowSupervisorChat}
-              onShowRescueModal={handleShowRescueModal}
+              onShowSearch={() => setShowSearchModal(true)}
+              onShowInsights={() => setShowInsightsModal(true)}
+              onNavigateToForm={() => setCurrentScreen('form')}
+              onShowUserManagement={() => setShowUserManagementModal(true)}
+              onShowSupervisorChat={() => {
+                setShowSupervisorChatModal(true);
+                setHasUnreadMessages(false);
+                localStorage.setItem('lastSeenChatTimestamp', new Date().toISOString());
+              }}
+              onShowRescueModal={() => setShowRescueModal(true)}
               hasUnreadMessages={hasUnreadMessages}
               presenceChannel={presenceChannel}
             />
@@ -316,18 +259,20 @@ const App = () => {
   };
 
   // ---------------------------
-  // 🌐 Render principal
+  // 🌐 Render principal com modais
   // ---------------------------
   return (
     <main className="min-h-screen bg-background text-foreground relative">
       {renderScreen()}
 
-      {/* Modais principais */}
       <SearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
         logoConfig={logoConfig}
-        onEditCadastro={handleEditCadastroRequest}
+        onEditCadastro={(cadastro) => {
+          setEditingCadastro(cadastro);
+          setCurrentScreen('form');
+        }}
         userInfo={userInfo}
       />
 
@@ -357,5 +302,12 @@ const App = () => {
     </main>
   );
 };
+
+/* 🚀 Exporta App com proteção global contra erros */
+const App = () => (
+  <ErrorBoundary>
+    <AppContent />
+  </ErrorBoundary>
+);
 
 export default App;
