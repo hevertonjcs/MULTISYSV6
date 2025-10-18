@@ -12,6 +12,7 @@ import { testConnection, supabase } from '@/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { initialFormData } from '@/constants';
 import { useDataMigrator } from '@/hooks/useDataMigrator';
+import { useSupabaseChannels } from '@/hooks/useSupabaseChannels';
 
 /* ✅ Hook dinâmico com fallback automático e seguro */
 const useDynamicMeta = () => {
@@ -19,7 +20,7 @@ const useDynamicMeta = () => {
     titulo: 'Sistema Multinegociações',
     descricao: 'Sistema de cadastro Multinegociações V2',
     favicon_url: 'https://i.ibb.co/MDBrt4hb/favicon.png',
-    nome_projeto: 'Multinegociações'
+    nome_projeto: 'Multinegociações',
   });
 
   useEffect(() => {
@@ -31,6 +32,7 @@ const useDynamicMeta = () => {
           .limit(1)
           .single();
 
+        // ⚠️ Fallback se não houver dados
         if (error || !data) {
           console.warn('⚠️ Nenhuma configuração encontrada no Supabase. Usando fallback local.');
           aplicarMeta(dinamiqueConfig);
@@ -46,11 +48,11 @@ const useDynamicMeta = () => {
       }
     };
 
+    // 🔧 Atualiza dinamicamente meta tags e favicon
     const aplicarMeta = (config) => {
-      // Atualiza o título
       document.title = config.titulo || 'Sistema';
 
-      // Atualiza meta description
+      // Meta Description
       let metaDesc = document.querySelector("meta[name='description']");
       if (!metaDesc) {
         metaDesc = document.createElement('meta');
@@ -59,7 +61,7 @@ const useDynamicMeta = () => {
       }
       metaDesc.setAttribute('content', config.descricao || 'Sistema Multinegociações');
 
-      // Atualiza favicon
+      // Favicon
       let favicon = document.querySelector("link[rel='icon']");
       if (!favicon) {
         favicon = document.createElement('link');
@@ -76,7 +78,11 @@ const useDynamicMeta = () => {
   return dinamiqueConfig;
 };
 
+/* 🌐 Componente principal */
 const App = () => {
+  // ---------------------------
+  // 🧠 Estados Globais
+  // ---------------------------
   const [currentScreen, setCurrentScreen] = useState('login');
   const [userInfo, setUserInfo] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -85,99 +91,46 @@ const App = () => {
   const [showSupervisorChatModal, setShowSupervisorChatModal] = useState(false);
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  const [logoConfig, setLogoConfig] = useState({
-    enabled: false,
-    url: '',
-    height: 30
-  });
+  const [logoConfig, setLogoConfig] = useState({ enabled: false, url: '', height: 30 });
   const [editingCadastro, setEditingCadastro] = useState(null);
   const { toast } = useToast();
-  const [presenceChannel, setPresenceChannel] = useState(null);
 
-  /* ✅ Integra a configuração dinâmica */
+  /* ✅ Integra metadados dinâmicos */
   const dinamiqueConfig = useDynamicMeta();
 
+  /* ✅ Migração de dados */
   useDataMigrator(userInfo);
 
-  useEffect(() => {
-    const savedLogoConfig = localStorage.getItem('logoConfig');
-    if (savedLogoConfig) {
-      try {
-        setLogoConfig(JSON.parse(savedLogoConfig));
-      } catch (error) {
-        console.error('Erro ao carregar configurações do logo:', error);
-      }
-    }
-  }, []);
+  /* ✅ Unificação de canais do Supabase */
+  const { presenceChannel } = useSupabaseChannels(userInfo, setHasUnreadMessages);
 
+  // ---------------------------
+  // 🔌 Teste de conexão Supabase
+  // ---------------------------
   useEffect(() => {
     const checkSupabaseConnection = async () => {
       if (supabase) {
         const connected = await testConnection();
         if (connected) {
           toast({
-            title: "Supabase Conectado!",
-            description: "Conexão com o banco de dados estabelecida com sucesso.",
-            variant: "default",
+            title: 'Supabase Conectado!',
+            description: 'Conexão com o banco de dados estabelecida com sucesso.',
           });
         }
       } else {
         toast({
-          title: "Supabase Não Configurado",
-          description: "As credenciais do Supabase não foram carregadas. O app usará localStorage.",
-          variant: "destructive",
+          title: 'Supabase Não Configurado',
+          description: 'O app usará localStorage como fallback.',
+          variant: 'destructive',
         });
       }
     };
     checkSupabaseConnection();
   }, [toast]);
 
-  useEffect(() => {
-    if (!userInfo || (userInfo.tipo_acesso !== 'admin' && !userInfo.permissoes?.pode_ver_chat_supervisores)) {
-      return;
-    }
-
-    const checkInitialUnreadMessages = async () => {
-      const lastSeen = localStorage.getItem('lastSeenChatTimestamp');
-      if (!lastSeen) {
-        setHasUnreadMessages(true);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error("Erro ao buscar última mensagem:", error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        if (new Date(data[0].created_at) > new Date(lastSeen)) {
-          setHasUnreadMessages(true);
-        }
-      }
-    };
-
-    checkInitialUnreadMessages();
-
-    const channel = supabase
-      .channel('public:chat_messages:app')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
-        if (payload.new.sender_name !== userInfo.vendedor) {
-          setHasUnreadMessages(true);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userInfo]);
-
+  // ---------------------------
+  // 🔐 Login e permissões
+  // ---------------------------
   const handleLogin = (loginData) => {
     const defaultPermissions = {
       pode_ver_todos_cadastros: false,
@@ -200,101 +153,75 @@ const App = () => {
         parsedPermissoes = loginData.permissoes;
       }
     } catch (error) {
-      console.error("Erro ao interpretar permissoes do usuário:", error, loginData.permissoes);
+      console.error('Erro ao interpretar permissoes do usuário:', error, loginData.permissoes);
       parsedPermissoes = null;
     }
 
     let permissions = parsedPermissoes || defaultPermissions;
 
+    // Ajustes conforme tipo de acesso
     if (loginData.tipo_acesso === 'admin') {
-      permissions = {
-        pode_ver_todos_cadastros: true,
-        pode_ver_cadastros: true,
-        pode_ver_insights: true,
-        pode_gerenciar_usuarios: true,
-        pode_ver_chat_supervisores: true,
-        pode_ver_usuarios_ativos: true,
-        pode_ver_log_atividades: true,
-        pode_usar_funcao_resgate: true,
-      };
+      permissions = Object.fromEntries(Object.keys(defaultPermissions).map((key) => [key, true]));
     } else if (loginData.tipo_acesso === 'supervisor') {
       permissions.pode_ver_todos_cadastros = true;
       permissions.pode_ver_chat_supervisores = true;
     }
 
-    console.log("Usuário logado com permissões:", permissions);
+    console.log('Usuário logado com permissões:', permissions);
 
     setUserInfo({ ...loginData, permissoes: permissions });
     setCurrentScreen('admin_dashboard');
     setEditingCadastro(null);
-
-    if (supabase) {
-      const channel = supabase.channel('online-users', {
-        config: {
-          presence: { key: loginData.vendedor },
-        },
-      });
-
-      channel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            online_at: new Date().toISOString(),
-            user_name: loginData.vendedor,
-            equipe: loginData.equipe,
-          });
-        }
-      });
-      setPresenceChannel(channel);
-    }
   };
 
+  // ---------------------------
+  // 🚪 Logout com limpeza de canais
+  // ---------------------------
   const handleLogout = () => {
-    if (presenceChannel) {
-      presenceChannel.untrack();
-      supabase.removeChannel(presenceChannel);
-      setPresenceChannel(null);
-    }
+    if (presenceChannel) supabase.removeChannel(presenceChannel);
     setUserInfo(null);
     setCurrentScreen('login');
     setEditingCadastro(null);
   };
 
+  // ---------------------------
+  // ⚙️ Abertura de modais
+  // ---------------------------
   const handleShowSearch = () => setShowSearchModal(true);
   const handleShowInsights = () => setShowInsightsModal(true);
   const handleShowUserManagement = () => setShowUserManagementModal(true);
   const handleShowRescueModal = () => setShowRescueModal(true);
-
   const handleShowSupervisorChat = () => {
     setShowSupervisorChatModal(true);
     setHasUnreadMessages(false);
     localStorage.setItem('lastSeenChatTimestamp', new Date().toISOString());
   };
 
-  const handleEditCadastroRequest = useCallback((cadastroData) => {
-    const mappedData = {};
-    for (const key in initialFormData) {
-      mappedData[key] = cadastroData[key] || initialFormData[key];
-    }
-
-    if (userInfo) {
-      mappedData.vendedor = cadastroData.vendedor || userInfo.vendedor;
-      mappedData.equipe = cadastroData.equipe || userInfo.equipe;
-    }
-
-    setEditingCadastro(mappedData);
-    setCurrentScreen('form');
-    setShowSearchModal(false);
-    toast({
-      title: "Modo de Edição",
-      description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}`,
-    });
-  }, [userInfo, toast]);
+  // ---------------------------
+  // ✏️ Edição e formulários
+  // ---------------------------
+  const handleEditCadastroRequest = useCallback(
+    (cadastroData) => {
+      const mappedData = {};
+      for (const key in initialFormData) mappedData[key] = cadastroData[key] || initialFormData[key];
+      if (userInfo) {
+        mappedData.vendedor = cadastroData.vendedor || userInfo.vendedor;
+        mappedData.equipe = cadastroData.equipe || userInfo.equipe;
+      }
+      setEditingCadastro(mappedData);
+      setCurrentScreen('form');
+      setShowSearchModal(false);
+      toast({
+        title: 'Modo de Edição',
+        description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}`,
+      });
+    },
+    [userInfo, toast]
+  );
 
   const handleFormSubmissionSuccess = () => {
     setEditingCadastro(null);
-    if (userInfo?.tipo_acesso) {
-      setCurrentScreen('admin_dashboard');
-    }
+    if (userInfo?.tipo_acesso) setCurrentScreen('admin_dashboard');
   };
 
   const handleNavigateToForm = () => {
@@ -307,6 +234,9 @@ const App = () => {
     setCurrentScreen('admin_dashboard');
   };
 
+  // ---------------------------
+  // 🖥️ Renderização de telas
+  // ---------------------------
   const renderScreen = () => {
     switch (currentScreen) {
       case 'login':
@@ -341,10 +271,14 @@ const App = () => {
     }
   };
 
+  // ---------------------------
+  // 🌐 Render principal
+  // ---------------------------
   return (
     <main className="min-h-screen bg-background text-foreground relative">
       {renderScreen()}
 
+      {/* Modais principais */}
       <SearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
@@ -359,10 +293,7 @@ const App = () => {
         userInfo={userInfo}
       />
 
-      <InsightsModal
-        isOpen={showInsightsModal}
-        onClose={() => setShowInsightsModal(false)}
-      />
+      <InsightsModal isOpen={showInsightsModal} onClose={() => setShowInsightsModal(false)} />
 
       <UserManagementModal
         isOpen={showUserManagementModal}
@@ -370,6 +301,7 @@ const App = () => {
         currentUser={userInfo}
       />
 
+      {/* Chat dos supervisores */}
       {(userInfo?.tipo_acesso === 'admin' || userInfo?.permissoes?.pode_ver_chat_supervisores) && (
         <SupervisorChatModal
           isOpen={showSupervisorChatModal}
