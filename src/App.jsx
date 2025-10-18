@@ -13,48 +13,67 @@ import { useToast } from '@/components/ui/use-toast';
 import { initialFormData } from '@/constants';
 import { useDataMigrator } from '@/hooks/useDataMigrator';
 
-/* 🔧 NOVO: Hook para carregar dados da tabela 'dinamique' */
+/* ✅ Hook dinâmico com fallback automático e seguro */
 const useDynamicMeta = () => {
+  const [dinamiqueConfig, setDinamiqueConfig] = useState({
+    titulo: 'Sistema Multinegociações',
+    descricao: 'Sistema de cadastro Multinegociações V2',
+    favicon_url: 'https://i.ibb.co/MDBrt4hb/favicon.png',
+    nome_projeto: 'Multinegociações'
+  });
+
   useEffect(() => {
     const carregarDinamique = async () => {
       try {
-        const { data, error } = await supabase.from('dinamique').select('*').limit(1).single();
+        const { data, error } = await supabase
+          .from('dinamique')
+          .select('*')
+          .limit(1)
+          .single();
 
-        if (error) {
-          console.error('Erro ao buscar configurações dinâmicas:', error.message);
+        if (error || !data) {
+          console.warn('⚠️ Nenhuma configuração encontrada no Supabase. Usando fallback local.');
+          aplicarMeta(dinamiqueConfig);
           return;
         }
 
-        if (data) {
-          // Atualiza o título
-          document.title = data.titulo || 'Sistema';
-
-          // Atualiza a meta description
-          let metaDesc = document.querySelector("meta[name='description']");
-          if (!metaDesc) {
-            metaDesc = document.createElement("meta");
-            metaDesc.setAttribute("name", "description");
-            document.head.appendChild(metaDesc);
-          }
-          metaDesc.setAttribute("content", data.descricao || "Sistema Multinegociações");
-
-          // Atualiza o favicon
-          let favicon = document.querySelector("link[rel='icon']");
-          if (!favicon) {
-            favicon = document.createElement("link");
-            favicon.setAttribute("rel", "icon");
-            document.head.appendChild(favicon);
-          }
-          favicon.setAttribute("type", "image/png");
-          favicon.setAttribute("href", data.favicon_url || "https://i.ibb.co/MDBrt4hb/favicon.png");
-        }
+        console.log('✅ Configurações dinâmicas carregadas do Supabase:', data);
+        setDinamiqueConfig(data);
+        aplicarMeta(data);
       } catch (err) {
-        console.error('Erro inesperado ao carregar dados dinâmicos:', err);
+        console.error('❌ Erro ao carregar configurações dinâmicas:', err);
+        aplicarMeta(dinamiqueConfig); // fallback automático
       }
+    };
+
+    const aplicarMeta = (config) => {
+      // Atualiza o título
+      document.title = config.titulo || 'Sistema';
+
+      // Atualiza meta description
+      let metaDesc = document.querySelector("meta[name='description']");
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.setAttribute('name', 'description');
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute('content', config.descricao || 'Sistema Multinegociações');
+
+      // Atualiza favicon
+      let favicon = document.querySelector("link[rel='icon']");
+      if (!favicon) {
+        favicon = document.createElement('link');
+        favicon.setAttribute('rel', 'icon');
+        document.head.appendChild(favicon);
+      }
+      favicon.setAttribute('type', 'image/png');
+      favicon.setAttribute('href', config.favicon_url || 'https://i.ibb.co/MDBrt4hb/favicon.png');
     };
 
     carregarDinamique();
   }, []);
+
+  return dinamiqueConfig;
 };
 
 const App = () => {
@@ -75,8 +94,8 @@ const App = () => {
   const { toast } = useToast();
   const [presenceChannel, setPresenceChannel] = useState(null);
 
-  /* ✅ Chamada do hook dinâmico */
-  useDynamicMeta();
+  /* ✅ Integra a configuração dinâmica */
+  const dinamiqueConfig = useDynamicMeta();
 
   useDataMigrator(userInfo);
 
