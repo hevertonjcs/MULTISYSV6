@@ -1,17 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
+import { EventEmitter } from 'events'; // ✅ Import do EventEmitter
 import { toast } from '@/components/ui/use-toast'; 
+
+// ✅ Aumenta o limite de listeners globais para evitar warnings
+EventEmitter.defaultMaxListeners = 50;
 
 const supabaseUrlFromEnv = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKeyFromEnv = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Use as credenciais fornecidas pelo sistema (via <supabase_credentials>)
+// Use as credenciais fornecidas pelo sistema (fallback seguro)
 const systemSupabaseUrl = 'https://bfxamibaxsyxltqkiftd.supabase.co';
 const systemSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeGFtaWJheHN5eGx0cWtpZnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzODQ4MTMsImV4cCI6MjA2NDk2MDgxM30.Yr3tTDElbMAewKq-MqBFeh6PG11N48ruy-xbUOa1EUQ';
 
-// Prefer values provided via environment variables (Vercel/Vite) if set.
-// Fallback to the hard‑coded credentials as a last resort.  This allows
-// overriding Supabase credentials in deployment environments (e.g. Vercel)
-// without modifying source code.
+// Preferência: variáveis de ambiente (Vercel/Vite)
 const supabaseUrlToUse = supabaseUrlFromEnv || systemSupabaseUrl;
 const supabaseAnonKeyToUse = supabaseAnonKeyFromEnv || systemSupabaseAnonKey;
 
@@ -21,16 +22,14 @@ if (supabaseUrlToUse && supabaseAnonKeyToUse) {
   try {
     supabaseInstance = createClient(supabaseUrlToUse, supabaseAnonKeyToUse, {
       realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
+        params: { eventsPerSecond: 10 },
       },
     });
     console.log("Cliente Supabase inicializado com sucesso!");
   } catch (error) {
     console.error("Erro ao inicializar o cliente Supabase:", error);
     supabaseInstance = null;
-     toast({
+    toast({
       title: "Erro Supabase",
       description: "Falha ao inicializar cliente Supabase. Verifique o console.",
       variant: "destructive",
@@ -47,11 +46,11 @@ export const testConnection = async () => {
     console.warn("Supabase não conectado, teste de conexão ignorado.");
     return false;
   }
+
   try {
     const { error } = await supabase.from('usuarios').select('id', { count: 'exact', head: true });
     
     if (error) { 
-      // Se for erro de fetch, mostra uma mensagem mais amigável.
       if (error.message.includes('Failed to fetch')) {
         console.error('Falha de rede ao conectar com Supabase:', error);
         toast({
@@ -69,7 +68,7 @@ export const testConnection = async () => {
       }
       return false;
     }
-    
+
     console.log('Conexão com Supabase testada com sucesso!');
     return true;
   } catch (error) {
