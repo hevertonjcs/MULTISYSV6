@@ -32,7 +32,6 @@ const useDynamicMeta = () => {
           .limit(1)
           .single();
 
-        // ⚠️ Fallback se não houver dados
         if (error || !data) {
           console.warn('⚠️ Nenhuma configuração encontrada no Supabase. Usando fallback local.');
           aplicarMeta(dinamiqueConfig);
@@ -48,11 +47,10 @@ const useDynamicMeta = () => {
       }
     };
 
-    // 🔧 Atualiza dinamicamente meta tags e favicon
     const aplicarMeta = (config) => {
       document.title = config.titulo || 'Sistema';
 
-      // Meta Description
+      // Meta description
       let metaDesc = document.querySelector("meta[name='description']");
       if (!metaDesc) {
         metaDesc = document.createElement('meta');
@@ -101,8 +99,8 @@ const App = () => {
   /* ✅ Migração de dados */
   useDataMigrator(userInfo);
 
-  /* ✅ Unificação de canais do Supabase */
-  const { presenceChannel } = useSupabaseChannels(userInfo, setHasUnreadMessages);
+  /* ✅ Hook centralizado do Supabase (presença + chat) */
+  const { presenceChannel, chatChannel } = useSupabaseChannels(userInfo, setHasUnreadMessages);
 
   // ---------------------------
   // 🔌 Teste de conexão Supabase
@@ -178,7 +176,10 @@ const App = () => {
   // 🚪 Logout com limpeza de canais
   // ---------------------------
   const handleLogout = () => {
+    // Limpa canais centralizados
     if (presenceChannel) supabase.removeChannel(presenceChannel);
+    if (chatChannel) supabase.removeChannel(chatChannel);
+
     setUserInfo(null);
     setCurrentScreen('login');
     setEditingCadastro(null);
@@ -264,6 +265,8 @@ const App = () => {
             onShowSupervisorChat={handleShowSupervisorChat}
             onShowRescueModal={handleShowRescueModal}
             hasUnreadMessages={hasUnreadMessages}
+            /* ✅ Agora passamos o canal de presença para o indicador */
+            presenceChannel={presenceChannel}
           />
         );
       default:
@@ -287,11 +290,7 @@ const App = () => {
         userInfo={userInfo}
       />
 
-      <RescueModal
-        isOpen={showRescueModal}
-        onClose={() => setShowRescueModal(false)}
-        userInfo={userInfo}
-      />
+      <RescueModal isOpen={showRescueModal} onClose={() => setShowRescueModal(false)} userInfo={userInfo} />
 
       <InsightsModal isOpen={showInsightsModal} onClose={() => setShowInsightsModal(false)} />
 
