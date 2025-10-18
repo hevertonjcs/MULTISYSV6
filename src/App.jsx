@@ -49,8 +49,6 @@ const useDynamicMeta = () => {
 
     const aplicarMeta = (config) => {
       document.title = config.titulo || 'Sistema';
-
-      // Meta description
       let metaDesc = document.querySelector("meta[name='description']");
       if (!metaDesc) {
         metaDesc = document.createElement('meta');
@@ -59,7 +57,6 @@ const useDynamicMeta = () => {
       }
       metaDesc.setAttribute('content', config.descricao || 'Sistema Multinegociações');
 
-      // Favicon
       let favicon = document.querySelector("link[rel='icon']");
       if (!favicon) {
         favicon = document.createElement('link');
@@ -157,7 +154,6 @@ const App = () => {
 
     let permissions = parsedPermissoes || defaultPermissions;
 
-    // Ajustes conforme tipo de acesso
     if (loginData.tipo_acesso === 'admin') {
       permissions = Object.fromEntries(Object.keys(defaultPermissions).map((key) => [key, true]));
     } else if (loginData.tipo_acesso === 'supervisor') {
@@ -173,16 +169,52 @@ const App = () => {
   };
 
   // ---------------------------
-  // 🚪 Logout com limpeza de canais
+  // 🚪 Logout com limpeza SEGURA e sem tela branca
   // ---------------------------
-  const handleLogout = () => {
-    // Limpa canais centralizados
-    if (presenceChannel) supabase.removeChannel(presenceChannel);
-    if (chatChannel) supabase.removeChannel(chatChannel);
+  const handleLogout = async () => {
+    try {
+      console.log('🔄 Iniciando processo de logout seguro...');
 
-    setUserInfo(null);
-    setCurrentScreen('login');
-    setEditingCadastro(null);
+      // ✅ Remove canais Realtime (caso existam)
+      if (presenceChannel) {
+        await supabase.removeChannel(presenceChannel);
+        console.log('🧹 Canal de presença encerrado.');
+      }
+      if (chatChannel) {
+        await supabase.removeChannel(chatChannel);
+        console.log('🧹 Canal de chat encerrado.');
+      }
+
+      // ✅ Limpa localStorage e estados persistentes
+      localStorage.clear();
+
+      // ✅ Reseta todos os estados críticos
+      setHasUnreadMessages(false);
+      setEditingCadastro(null);
+      setShowInsightsModal(false);
+      setShowSearchModal(false);
+      setShowRescueModal(false);
+      setShowUserManagementModal(false);
+      setShowSupervisorChatModal(false);
+
+      // ✅ Redefine o usuário e a tela atual
+      setUserInfo(null);
+      setCurrentScreen('login');
+
+      // ✅ Força atualização visual leve (sem reload completo)
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 200);
+
+      console.log('✅ Logout concluído com segurança!');
+    } catch (error) {
+      console.error('❌ Erro ao deslogar:', error);
+      toast({
+        title: 'Erro ao sair',
+        description: 'Algo inesperado ocorreu durante o logout. Recarregue a página se persistir.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // ---------------------------
@@ -239,38 +271,47 @@ const App = () => {
   // 🖥️ Renderização de telas
   // ---------------------------
   const renderScreen = () => {
-    switch (currentScreen) {
-      case 'login':
-        return <LoginPage onLogin={handleLogin} />;
-      case 'form':
-        return (
-          <FormPage
-            userInfo={userInfo}
-            onLogout={handleLogout}
-            logoConfig={logoConfig}
-            initialDataForEdit={editingCadastro}
-            onSubmissionSuccess={handleFormSubmissionSuccess}
-            onBackToDashboard={handleBackToDashboard}
-          />
-        );
-      case 'admin_dashboard':
-        return (
-          <AdminDashboard
-            userInfo={userInfo}
-            onLogout={handleLogout}
-            onShowSearch={handleShowSearch}
-            onShowInsights={handleShowInsights}
-            onNavigateToForm={handleNavigateToForm}
-            onShowUserManagement={handleShowUserManagement}
-            onShowSupervisorChat={handleShowSupervisorChat}
-            onShowRescueModal={handleShowRescueModal}
-            hasUnreadMessages={hasUnreadMessages}
-            /* ✅ Agora passamos o canal de presença para o indicador */
-            presenceChannel={presenceChannel}
-          />
-        );
-      default:
-        return <LoginPage onLogin={handleLogin} />;
+    try {
+      switch (currentScreen) {
+        case 'login':
+          return <LoginPage onLogin={handleLogin} />;
+        case 'form':
+          return (
+            <FormPage
+              userInfo={userInfo}
+              onLogout={handleLogout}
+              logoConfig={logoConfig}
+              initialDataForEdit={editingCadastro}
+              onSubmissionSuccess={handleFormSubmissionSuccess}
+              onBackToDashboard={handleBackToDashboard}
+            />
+          );
+        case 'admin_dashboard':
+          if (!userInfo) return <LoginPage onLogin={handleLogin} />;
+          return (
+            <AdminDashboard
+              userInfo={userInfo}
+              onLogout={handleLogout}
+              onShowSearch={handleShowSearch}
+              onShowInsights={handleShowInsights}
+              onNavigateToForm={handleNavigateToForm}
+              onShowUserManagement={handleShowUserManagement}
+              onShowSupervisorChat={handleShowSupervisorChat}
+              onShowRescueModal={handleShowRescueModal}
+              hasUnreadMessages={hasUnreadMessages}
+              presenceChannel={presenceChannel}
+            />
+          );
+        default:
+          return <LoginPage onLogin={handleLogin} />;
+      }
+    } catch (error) {
+      console.error('⚠️ Erro na renderização da tela:', error);
+      return (
+        <div className="p-8 text-center">
+          <p className="text-red-500 font-semibold">Erro inesperado. Recarregue a página.</p>
+        </div>
+      );
     }
   };
 
@@ -300,7 +341,6 @@ const App = () => {
         currentUser={userInfo}
       />
 
-      {/* Chat dos supervisores */}
       {(userInfo?.tipo_acesso === 'admin' || userInfo?.permissoes?.pode_ver_chat_supervisores) && (
         <SupervisorChatModal
           isOpen={showSupervisorChatModal}
