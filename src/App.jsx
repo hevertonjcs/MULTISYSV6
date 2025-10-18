@@ -13,6 +13,50 @@ import { useToast } from '@/components/ui/use-toast';
 import { initialFormData } from '@/constants';
 import { useDataMigrator } from '@/hooks/useDataMigrator';
 
+/* 🔧 NOVO: Hook para carregar dados da tabela 'dinamique' */
+const useDynamicMeta = () => {
+  useEffect(() => {
+    const carregarDinamique = async () => {
+      try {
+        const { data, error } = await supabase.from('dinamique').select('*').limit(1).single();
+
+        if (error) {
+          console.error('Erro ao buscar configurações dinâmicas:', error.message);
+          return;
+        }
+
+        if (data) {
+          // Atualiza o título
+          document.title = data.titulo || 'Sistema';
+
+          // Atualiza a meta description
+          let metaDesc = document.querySelector("meta[name='description']");
+          if (!metaDesc) {
+            metaDesc = document.createElement("meta");
+            metaDesc.setAttribute("name", "description");
+            document.head.appendChild(metaDesc);
+          }
+          metaDesc.setAttribute("content", data.descricao || "Sistema Multinegociações");
+
+          // Atualiza o favicon
+          let favicon = document.querySelector("link[rel='icon']");
+          if (!favicon) {
+            favicon = document.createElement("link");
+            favicon.setAttribute("rel", "icon");
+            document.head.appendChild(favicon);
+          }
+          favicon.setAttribute("type", "image/png");
+          favicon.setAttribute("href", data.favicon_url || "https://i.ibb.co/MDBrt4hb/favicon.png");
+        }
+      } catch (err) {
+        console.error('Erro inesperado ao carregar dados dinâmicos:', err);
+      }
+    };
+
+    carregarDinamique();
+  }, []);
+};
+
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [userInfo, setUserInfo] = useState(null);
@@ -31,9 +75,11 @@ const App = () => {
   const { toast } = useToast();
   const [presenceChannel, setPresenceChannel] = useState(null);
 
+  /* ✅ Chamada do hook dinâmico */
+  useDynamicMeta();
+
   useDataMigrator(userInfo);
 
-  // Carregar configuração de logo
   useEffect(() => {
     const savedLogoConfig = localStorage.getItem('logoConfig');
     if (savedLogoConfig) {
@@ -45,7 +91,6 @@ const App = () => {
     }
   }, []);
 
-  // Testar conexão com Supabase
   useEffect(() => {
     const checkSupabaseConnection = async () => {
       if (supabase) {
@@ -68,7 +113,6 @@ const App = () => {
     checkSupabaseConnection();
   }, [toast]);
 
-  // Monitorar mensagens novas para admins/supervisores
   useEffect(() => {
     if (!userInfo || (userInfo.tipo_acesso !== 'admin' && !userInfo.permissoes?.pode_ver_chat_supervisores)) {
       return;
@@ -113,10 +157,8 @@ const App = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-
   }, [userInfo]);
 
-  // 🔧 CORREÇÃO DEFINITIVA — Parsing robusto de permissões do banco
   const handleLogin = (loginData) => {
     const defaultPermissions = {
       pode_ver_todos_cadastros: false,
@@ -133,7 +175,6 @@ const App = () => {
 
     try {
       if (typeof loginData.permissoes === 'string') {
-        // Corrige strings JSON duplamente escapadas do Supabase
         const cleaned = loginData.permissoes.replace(/^"|"$/g, '').replace(/\\"/g, '"');
         parsedPermissoes = JSON.parse(cleaned);
       } else if (typeof loginData.permissoes === 'object' && loginData.permissoes !== null) {
@@ -144,10 +185,8 @@ const App = () => {
       parsedPermissoes = null;
     }
 
-    // Garante prioridade às permissões do banco
     let permissions = parsedPermissoes || defaultPermissions;
 
-    // Ajustes automáticos conforme tipo de acesso
     if (loginData.tipo_acesso === 'admin') {
       permissions = {
         pode_ver_todos_cadastros: true,
@@ -170,13 +209,10 @@ const App = () => {
     setCurrentScreen('admin_dashboard');
     setEditingCadastro(null);
 
-    // Presença online via Supabase Realtime
     if (supabase) {
       const channel = supabase.channel('online-users', {
         config: {
-          presence: {
-            key: loginData.vendedor,
-          },
+          presence: { key: loginData.vendedor },
         },
       });
 
@@ -193,7 +229,6 @@ const App = () => {
     }
   };
 
-  // Logout
   const handleLogout = () => {
     if (presenceChannel) {
       presenceChannel.untrack();
@@ -205,7 +240,6 @@ const App = () => {
     setEditingCadastro(null);
   };
 
-  // Controles de navegação e modais
   const handleShowSearch = () => setShowSearchModal(true);
   const handleShowInsights = () => setShowInsightsModal(true);
   const handleShowUserManagement = () => setShowUserManagementModal(true);
@@ -220,11 +254,7 @@ const App = () => {
   const handleEditCadastroRequest = useCallback((cadastroData) => {
     const mappedData = {};
     for (const key in initialFormData) {
-      if (cadastroData.hasOwnProperty(key)) {
-        mappedData[key] = cadastroData[key];
-      } else {
-        mappedData[key] = initialFormData[key];
-      }
+      mappedData[key] = cadastroData[key] || initialFormData[key];
     }
 
     if (userInfo) {
@@ -235,7 +265,10 @@ const App = () => {
     setEditingCadastro(mappedData);
     setCurrentScreen('form');
     setShowSearchModal(false);
-    toast({ title: "Modo de Edição", description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}` });
+    toast({
+      title: "Modo de Edição",
+      description: `Editando cadastro: ${cadastroData.codigo_cadastro || 'Novo Cadastro'}`,
+    });
   }, [userInfo, toast]);
 
   const handleFormSubmissionSuccess = () => {
@@ -255,7 +288,6 @@ const App = () => {
     setCurrentScreen('admin_dashboard');
   };
 
-  // Renderização das telas
   const renderScreen = () => {
     switch (currentScreen) {
       case 'login':
