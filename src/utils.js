@@ -36,7 +36,6 @@ export const formatMoeda = (value) => {
 
   let cleanedValue = String(value).replace(/[^\d,.-]/g, ''); 
 
-  
   if (cleanedValue.includes(',')) {
     const parts = cleanedValue.split(',');
     if (parts.length > 2) { 
@@ -63,7 +62,6 @@ export const formatMoeda = (value) => {
   }).format(amount);
 };
 
-
 export const formatDataHora = (dateInput) => {
   if (!dateInput) return 'N/A';
   let date = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -79,10 +77,26 @@ export const formatDataHora = (dateInput) => {
   }).format(date);
 };
 
+// ✅ Função corrigida para evitar problema de fuso horário na data (ex: data de nascimento)
 export const formatData = (dateString, format = 'DD/MM/YYYY') => {
   if (!dateString) return '';
+
+  // 1) Se vier no formato "YYYY-MM-DD", NÃO usa new Date (evita fuso horário)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [year, month, day] = dateString.split('-');
+
+    if (format === 'YYYY-MM-DD') {
+      // Já está no formato certo
+      return `${year}-${month}-${day}`;
+    }
+
+    // Padrão DD/MM/YYYY
+    return `${day}/${month}/${year}`;
+  }
+
+  // 2) Se vier com horário (ex: "2025-12-10T00:00:00Z"), aí sim usamos Date
   const date = new Date(dateString);
-   if (isNaN(date.getTime())) return 'Data inválida';
+  if (isNaN(date.getTime())) return 'Data inválida';
 
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0'); 
