@@ -111,7 +111,7 @@ export const TIPO_RENDA_OPCOES = [
   'Autônomo',
   'Empresário',
   'Aposentado',
-  'Pensionista'
+  'Funcionario Publico'
 ];
 
 export const SEGMENTO_OPCOES = [
@@ -120,6 +120,9 @@ export const SEGMENTO_OPCOES = [
   'Imóveis Residenciais',
   'Imóveis Comerciais',
   'Serviços Diversos',
+  'Parcelamento Bancario',
+  'Crédito Rural',
+  'Autofinanciamento',
   'Outros'
 ];
 
@@ -133,6 +136,7 @@ export const STATUS_OPCOES = [
   { value: 'marcou_visita', label: 'Marcou Visita', className: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   { value: 'comprou', label: 'Comprou', className: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
   { value: 'nao_comprou', label: 'Não Comprou', className: 'bg-rose-100 text-rose-800 border-rose-300' },
+  { value: 'cancelado', label: 'Cancelado', className: 'bg-rose-100 text-rose-800 border-rose-300' },  
   { value: 'nao_atendeu', label: 'Não Atendeu', className: 'bg-orange-100 text-orange-800 border-orange-300' },
   { value: 'caixa_postal_bloqueador', label: 'Caixa Postal/Bloqueador', className: 'bg-pink-100 text-pink-800 border-pink-300' },
   { value: 'pediu_contato_vendedor', label: 'Pediu Contato Vendedor', className: 'bg-cyan-100 text-cyan-800 border-cyan-300' }
