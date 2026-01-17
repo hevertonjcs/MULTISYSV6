@@ -17,12 +17,16 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setIsLoading(true);
 
+    // ✅ Normalização: ignora espaços e ignora maiúsc/minúsc
+    const normalizedUsername = (nome_usuario ?? '').trim().toLowerCase();
+    const normalizedPassword = (senha ?? '').trim().toLowerCase();
+
     try {
       if (supabase) {
         // 🔹 Login via função RPC no Supabase
         const { data, error } = await supabase.rpc('login_case_insensitive', {
-          p_nome_usuario: nome_usuario,
-          p_senha: senha,
+          p_nome_usuario: normalizedUsername,
+          p_senha: normalizedPassword,
         });
 
         if (error) throw new Error(`Erro no RPC: ${error.message}`);
@@ -86,8 +90,8 @@ const LoginPage = ({ onLogin }) => {
           throw new Error('Usuário ou senha inválidos.');
         }
       } else {
-        // 🔧 Fallback local (modo offline)
-        if (nome_usuario.toLowerCase() === 'admin' && senha.toLowerCase() === 'admin') {
+        // 🔧 Fallback local (modo offline) — usando os valores normalizados
+        if (normalizedUsername === 'admin' && normalizedPassword === 'admin') {
           onLogin({
             nome_usuario: 'Admin Local',
             vendedor: 'Admin Local',
@@ -104,7 +108,7 @@ const LoginPage = ({ onLogin }) => {
               pode_ver_chat_supervisores: true,
             },
           });
-        } else if (nome_usuario.toLowerCase() === 'vendedor' && senha.toLowerCase() === 'vendedor') {
+        } else if (normalizedUsername === 'vendedor' && normalizedPassword === 'vendedor') {
           onLogin({
             nome_usuario: 'Vendedor Local',
             vendedor: 'Vendedor Local',
