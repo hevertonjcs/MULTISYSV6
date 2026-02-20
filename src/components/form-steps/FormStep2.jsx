@@ -21,7 +21,7 @@ const FormStep2 = ({ formData, errors, handleInputChange, handleInputBlur, touch
           Como podemos entrar em contato com você?
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <motion.div
@@ -56,7 +56,7 @@ const FormStep2 = ({ formData, errors, handleInputChange, handleInputBlur, touch
           >
             <Label htmlFor="email" className="text-foreground flex items-center gap-2">
               <Mail className="w-4 h-4 text-primary" />
-              E-mail *
+              E-mail (opcional)
             </Label>
             <Input
               id="email"
@@ -72,28 +72,29 @@ const FormStep2 = ({ formData, errors, handleInputChange, handleInputBlur, touch
             )}
           </motion.div>
         </div>
-         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="space-y-2"
-          >
-            <Label htmlFor="contato_adicional" className="text-foreground flex items-center gap-2">
-              <User className="w-4 h-4 text-primary" />
-              Contato Adicional
-            </Label>
-            <Input
-              id="contato_adicional"
-              placeholder="Nome e telefone (opcional)"
-              value={formData.contato_adicional || ''}
-              onChange={(e) => handleInputChange('contato_adicional', e.target.value)}
-              onBlur={() => handleInputBlur('contato_adicional')}
-              className="bg-background border-border text-foreground placeholder:text-muted-foreground"
-            />
-            {showError('contato_adicional') && (
-              <p className="text-destructive text-sm">{errors.contato_adicional}</p>
-            )}
-          </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="space-y-2"
+        >
+          <Label htmlFor="contato_adicional" className="text-foreground flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            Contato Adicional
+          </Label>
+          <Input
+            id="contato_adicional"
+            placeholder="Nome e telefone (opcional)"
+            value={formData.contato_adicional || ''}
+            onChange={(e) => handleInputChange('contato_adicional', e.target.value)}
+            onBlur={() => handleInputBlur('contato_adicional')}
+            className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+          />
+          {showError('contato_adicional') && (
+            <p className="text-destructive text-sm">{errors.contato_adicional}</p>
+          )}
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -103,7 +104,7 @@ const FormStep2 = ({ formData, errors, handleInputChange, handleInputBlur, touch
         >
           <h4 className="text-foreground font-medium mb-2">📱 Dica importante</h4>
           <p className="text-muted-foreground text-sm">
-            Mantenha seus dados de contato atualizados. Utilizaremos essas informações 
+            Mantenha seus dados de contato atualizados. Utilizaremos essas informações
             para comunicações importantes sobre seu cadastro.
           </p>
         </motion.div>
@@ -111,5 +112,4 @@ const FormStep2 = ({ formData, errors, handleInputChange, handleInputBlur, touch
     </Card>
   );
 };
-
 export default FormStep2;
