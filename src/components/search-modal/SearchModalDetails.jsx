@@ -29,7 +29,20 @@ const DetailItem = ({ label, value }) => {
   );
 };
 
-const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResendTelegram, onEdit, onCopy, onDelete, onDownloadDocs, isDownloading, onAddObservation, userInfo }) => {
+const SearchModalDetails = ({
+  isOpen,
+  onClose,
+  cadastro,
+  onDownloadPDF,
+  onResendTelegram,
+  onEdit,
+  onCopy,
+  onDelete,
+  onDownloadDocs,
+  isDownloading,
+  onAddObservation,
+  userInfo
+}) => {
   if (!cadastro) return null;
 
   const teamData = [
@@ -83,35 +96,44 @@ const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResend
     return fields.map(({ key, label, format }) => {
       let value = cadastro[key];
       if (format && value) value = format(String(value));
-      if (value === null || value === undefined || String(value).trim() === '' || (String(value).trim() === 'R$0,00' && (key === 'valor_credito' || key === 'renda_mensal' || key === 'valor_entrada' || key === 'valor_parcela'))) {
+      if (
+        value === null ||
+        value === undefined ||
+        String(value).trim() === '' ||
+        (String(value).trim() === 'R$0,00' &&
+          (key === 'valor_credito' || key === 'renda_mensal' || key === 'valor_entrada' || key === 'valor_parcela'))
+      ) {
         value = 'N/A';
       }
       return <DetailItem key={key} label={label} value={value} />;
     });
   };
-  
+
   const formatSupervisorObservation = (obsData) => {
     if (!obsData || (Array.isArray(obsData) && obsData.length === 0)) {
-        return <p className="text-sm text-muted-foreground">Nenhuma observação.</p>;
+      return <p className="text-sm text-muted-foreground">Nenhuma observação.</p>;
     }
-    
+
     let observations = [];
     if (Array.isArray(obsData)) {
-        observations = [...obsData].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      observations = [...obsData].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } else if (typeof obsData === 'object' && obsData !== null) {
-        observations = [obsData];
+      observations = [obsData];
     } else {
-         return <p className="text-sm text-destructive">Formato de observação inválido.</p>;
+      return <p className="text-sm text-destructive">Formato de observação inválido.</p>;
     }
 
     return (
-        <ul className="space-y-2 list-none p-0 max-h-40 overflow-y-auto">
-            {observations.map((obs, index) => (
-                <li key={obs.timestamp || index} className="text-sm">
-                    <span className="font-medium text-foreground">[{formatDataHora(obs.timestamp)}] por {obs.author || 'Supervisor'}:</span> <span className="text-muted-foreground">{obs.text}</span>
-                </li>
-            ))}
-        </ul>
+      <ul className="space-y-2 list-none p-0 max-h-40 overflow-y-auto">
+        {observations.map((obs, index) => (
+          <li key={obs.timestamp || index} className="text-sm">
+            <span className="font-medium text-foreground">
+              [{formatDataHora(obs.timestamp)}] por {obs.author || 'Supervisor'}:
+            </span>{' '}
+            <span className="text-muted-foreground">{obs.text}</span>
+          </li>
+        ))}
+      </ul>
     );
   };
 
@@ -127,21 +149,33 @@ const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResend
 
   const isSupervisorOrAdmin = userInfo?.tipo_acesso === 'admin' || userInfo?.tipo_acesso === 'supervisor';
 
+  // ✅ Mostra botão de editar SOMENTE quando existir onEdit (permissão ativa)
+  const canEdit = typeof onEdit === 'function';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-card border-border p-4 md:p-6 rounded-lg shadow-xl">
         <DialogHeader className="mb-4">
-          <DialogTitle className="text-card-foreground text-xl md:text-2xl">
-            Detalhes do Cadastro
-          </DialogTitle>
+          <DialogTitle className="text-card-foreground text-xl md:text-2xl">Detalhes do Cadastro</DialogTitle>
           <DialogDescription>
             Visualização completa das informações de {cadastro.nome_completo || 'cliente'}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 p-1">
-          <div className={`p-3 rounded-md border ${cadastro.status_cliente === 'aprovado' ? 'bg-green-500/10 border-green-500/30 text-green-700' : cadastro.status_cliente === 'reprovado' ? 'bg-red-500/10 border-red-500/30 text-red-700' : 'bg-blue-500/10 border-blue-500/30 text-blue-700'}`}>
-            Status Atual: <span className="font-semibold">{cadastro.status_cliente ? cadastro.status_cliente.replace(/_/g,' ').toUpperCase() : 'N/A'}</span>
+          <div
+            className={`p-3 rounded-md border ${
+              cadastro.status_cliente === 'aprovado'
+                ? 'bg-green-500/10 border-green-500/30 text-green-700'
+                : cadastro.status_cliente === 'reprovado'
+                ? 'bg-red-500/10 border-red-500/30 text-red-700'
+                : 'bg-blue-500/10 border-blue-500/30 text-blue-700'
+            }`}
+          >
+            Status Atual:{' '}
+            <span className="font-semibold">
+              {cadastro.status_cliente ? cadastro.status_cliente.replace(/_/g, ' ').toUpperCase() : 'N/A'}
+            </span>
           </div>
 
           <DetailSection title="Responsável" icon={<Briefcase className="w-5 h-5" />}>
@@ -163,7 +197,7 @@ const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResend
           <DetailSection title="Simulação e Valores" icon={<DollarSign className="w-5 h-5" />}>
             {renderFields(simulationData)}
           </DetailSection>
-          
+
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2 border-b border-border pb-2 mb-3">
               Observações
@@ -171,7 +205,9 @@ const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResend
             <div className="space-y-4">
               <div>
                 <span className="text-xs text-muted-foreground">Observação do Cliente:</span>
-                <p className="text-sm text-card-foreground p-2 bg-muted/50 rounded-md min-h-[30px]">{cadastro.observacao_final || 'N/A'}</p>
+                <p className="text-sm text-card-foreground p-2 bg-muted/50 rounded-md min-h-[30px]">
+                  {cadastro.observacao_final || 'N/A'}
+                </p>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground">Histórico do Supervisor:</span>
@@ -179,11 +215,11 @@ const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResend
                   {formatSupervisorObservation(cadastro.observacao_supervisor)}
                 </div>
                 {isSupervisorOrAdmin && (
-                   <SupervisorObservationForm 
-                     cadastro={cadastro} 
-                     onAddObservation={onAddObservation} 
-                     userInfo={userInfo}
-                   />
+                  <SupervisorObservationForm
+                    cadastro={cadastro}
+                    onAddObservation={onAddObservation}
+                    userInfo={userInfo}
+                  />
                 )}
               </div>
             </div>
@@ -194,37 +230,84 @@ const SearchModalDetails = ({ isOpen, onClose, cadastro, onDownloadPDF, onResend
               <span className="text-xs text-muted-foreground">Documentos Anexados:</span>
               <ul className="list-disc list-inside pl-1">
                 {parsedDocs.map((doc, idx) => (
-                  <li key={idx} className="text-sm text-card-foreground truncate">{doc.name || 'Arquivo sem nome'}</li>
+                  <li key={idx} className="text-sm text-card-foreground truncate">
+                    {doc.name || 'Arquivo sem nome'}
+                  </li>
                 ))}
               </ul>
             </div>
           )}
 
           <div className="flex flex-wrap gap-2 pt-4 border-t border-border mt-6">
-            <Button onClick={() => onEdit(cadastro)} variant="outline" size="sm" className="border-blue-500/70 text-blue-600 hover:bg-blue-500/10">
-              <Edit3 className="w-4 h-4 mr-2" />
-              Editar Dados
-            </Button>
-            <Button onClick={() => onCopy(cadastro)} variant="outline" size="sm" className="border-purple-500/70 text-purple-600 hover:bg-purple-500/10">
+            {canEdit && (
+              <Button
+                onClick={() => onEdit(cadastro)}
+                variant="outline"
+                size="sm"
+                className="border-blue-500/70 text-blue-600 hover:bg-blue-500/10"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Editar Dados
+              </Button>
+            )}
+
+            <Button
+              onClick={() => onCopy(cadastro)}
+              variant="outline"
+              size="sm"
+              className="border-purple-500/70 text-purple-600 hover:bg-purple-500/10"
+            >
               <Copy className="w-4 h-4 mr-2" />
               Copiar Dados
             </Button>
-            <Button onClick={() => onDownloadPDF(cadastro)} variant="outline" size="sm" className="border-primary text-primary hover:bg-primary/10">
+
+            <Button
+              onClick={() => onDownloadPDF(cadastro)}
+              variant="outline"
+              size="sm"
+              className="border-primary text-primary hover:bg-primary/10"
+            >
               <Download className="w-4 h-4 mr-2" />
               Baixar PDF
             </Button>
-             {parsedDocs.length > 0 && (
-              <Button onClick={() => onDownloadDocs(cadastro)} variant="outline" size="sm" className="border-green-500/70 text-green-600 hover:bg-green-500/10" disabled={isDownloading}>
-                {isDownloading ? <div className="w-4 h-4 border-2 border-green-500/30 border-t-green-600 rounded-full animate-spin mr-2" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
-                {isDownloading ? "Baixando..." : "Baixar Documentos"}
+
+            {parsedDocs.length > 0 && (
+              <Button
+                onClick={() => onDownloadDocs(cadastro)}
+                variant="outline"
+                size="sm"
+                className="border-green-500/70 text-green-600 hover:bg-green-500/10"
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <div className="w-4 h-4 border-2 border-green-500/30 border-t-green-600 rounded-full animate-spin mr-2" />
+                ) : (
+                  <DownloadCloud className="w-4 h-4 mr-2" />
+                )}
+                {isDownloading ? 'Baixando...' : 'Baixar Documentos'}
               </Button>
             )}
-            <Button onClick={() => onResendTelegram(cadastro)} variant="outline" size="sm" className="border-teal-500/70 text-teal-600 hover:bg-teal-500/10">
+
+            <Button
+              onClick={() => onResendTelegram(cadastro)}
+              variant="outline"
+              size="sm"
+              className="border-teal-500/70 text-teal-600 hover:bg-teal-500/10"
+            >
               <Send className="w-4 h-4 mr-2" />
               Reenviar Telegram
             </Button>
-             {onDelete && isSupervisorOrAdmin && (
-              <Button onClick={() => { onClose(); setTimeout(() => onDelete(cadastro), 100); }} variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-destructive-foreground">
+
+            {onDelete && isSupervisorOrAdmin && (
+              <Button
+                onClick={() => {
+                  onClose();
+                  setTimeout(() => onDelete(cadastro), 100);
+                }}
+                variant="destructive"
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-destructive-foreground"
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Apagar Cadastro
               </Button>
