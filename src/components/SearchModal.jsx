@@ -149,7 +149,10 @@ const SearchModal = ({ isOpen, onClose, logoConfig, onEditCadastro, userInfo }) 
   // 🧠 Lógica de permissões internas (para botões)
   // --------------------------------------------
   const canDelete = permissions.pode_gerenciar_usuarios || permissions.pode_ver_todos_cadastros;
-  const canEdit = permissions.pode_gerenciar_usuarios || permissions.pode_ver_todos_cadastros;
+  const canEdit =
+  permissions.pode_ver_cadastros ||
+  permissions.pode_ver_todos_cadastros ||
+  permissions.pode_gerenciar_usuarios;
   const canTransferSeller = permissions.pode_gerenciar_usuarios;
   const canDownload = permissions.pode_ver_cadastros;
   const canResendTelegram = permissions.pode_ver_todos_cadastros;
