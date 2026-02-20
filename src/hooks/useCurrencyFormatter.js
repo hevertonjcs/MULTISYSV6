@@ -3,8 +3,9 @@ import React, { useEffect } from 'react';
 const formatCurrency = (value) => {
   const numericValue = parseFloat(value);
   if (isNaN(numericValue)) {
-    return ''; // Ou pode retornar um valor padrão como R$ 0,00
+    return '';
   }
+
   return numericValue.toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -18,24 +19,32 @@ export const useCurrencyFormatter = (fieldName, formData, setFormData) => {
     const rawValue = formData[fieldName];
     const formattedFieldName = `${fieldName}Fmt`;
 
-    if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
+    if (
+      rawValue !== undefined &&
+      rawValue !== null &&
+      String(rawValue).trim() !== ''
+    ) {
       const currentFormattedValue = formData[formattedFieldName];
       const newFormattedValue = formatCurrency(rawValue);
-      
+
       if (newFormattedValue !== currentFormattedValue) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           [formattedFieldName]: newFormattedValue,
         }));
       }
     } else {
-      // Se o valor bruto estiver vazio ou nulo, limpa o formatado ou define um padrão
-      if (formData[formattedFieldName] !== '') { // Evita loop se já estiver limpo
-        setFormData(prev => ({
+      if (formData[formattedFieldName] !== '') {
+        setFormData((prev) => ({
           ...prev,
-          [formattedFieldName]: '', // Ou R$ 0,00 se preferir
+          [formattedFieldName]: '',
         }));
       }
     }
-  }, [formData[fieldName], fieldName, setFormData, formData]);
+  }, [
+    fieldName,
+    formData[fieldName],
+    formData[`${fieldName}Fmt`],
+    setFormData,
+  ]);
 };
