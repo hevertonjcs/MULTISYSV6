@@ -33,7 +33,7 @@ export const useFormData = (initialDataForEdit = null) => {
       return newErrors;
     });
   }, []);
-  
+
   const clearAllErrors = useCallback(() => {
     setErrors({});
   }, []);
@@ -75,86 +75,118 @@ export const useFormData = (initialDataForEdit = null) => {
         equipe: prev.equipe || ''
       }));
     }
-    setTouchedFields({}); 
+    setTouchedFields({});
     clearAllErrors();
   }, [initialDataForEdit, clearAllErrors]);
 
   const validateFieldFormat = useCallback((field, value) => {
     let isValid = true;
     let message = '';
+
     switch (field) {
-      case 'cpf':
-        if (String(value).replace(/\D/g, '').length === 11 && !validarCPF(String(value))) {
+      case 'cpf': {
+        const cpfDigits = String(value || '').replace(/\D/g, '');
+        if (cpfDigits.length === 11 && !validarCPF(String(value))) {
           message = 'CPF inválido';
           isValid = false;
         }
         break;
-      case 'email':
-        if (String(value).trim() !== '' && !validarEmail(String(value))) {
+      }
+
+      case 'email': {
+        const v = String(value || '').trim();
+
+        // ✅ EMAIL OPCIONAL: se vazio, limpa qualquer erro antigo e sai válido
+        if (v === '') {
+          clearError('email');
+          return true;
+        }
+
+        // se preenchido, valida formato
+        if (!validarEmail(v)) {
           message = 'E-mail inválido';
           isValid = false;
         }
         break;
+      }
+
       default:
         break;
     }
+
     if (!isValid) {
       setError(field, message);
     } else {
-      if(errors[field] === message || (field === 'cpf' && errors[field] === 'CPF inválido') || (field === 'email' && errors[field] === 'E-mail inválido')){
-        clearError(field);
-      }
+      // ✅ se está válido, limpa qualquer erro do campo (inclui "E-mail é obrigatório")
+      clearError(field);
     }
-    return isValid;
-  }, [setError, clearError, errors]);
 
+    return isValid;
+  }, [setError, clearError]);
 
   const handleInputChange = useCallback((field, value) => {
     let processedValue = value;
+
     switch (field) {
-      case 'cpf':
+      case 'cpf': {
         processedValue = formatCPF(String(value));
         setFormData(prev => ({ ...prev, [field]: processedValue }));
+
         if (String(processedValue).replace(/\D/g, '').length === 11) {
           validateFieldFormat(field, processedValue);
         } else {
-           if(errors[field] === 'CPF inválido') clearError(field);
+          if (errors[field] === 'CPF inválido') clearError(field);
         }
         break;
+      }
+
       case 'cep':
         processedValue = formatCEP(String(value));
         setFormData(prev => ({ ...prev, [field]: processedValue }));
         break;
+
       case 'telefone':
         processedValue = formatTelefone(String(value));
         setFormData(prev => ({ ...prev, [field]: processedValue }));
         break;
+
       case 'renda_mensal':
       case 'valor_credito':
       case 'valor_entrada':
-      case 'valor_parcela':
+      case 'valor_parcela': {
         const onlyDigits = String(value).replace(/\D/g, '');
         const numericValue = onlyDigits ? parseInt(onlyDigits, 10) / 100 : '';
-        setFormData(prev => ({ ...prev, [field]: numericValue, }));
+        setFormData(prev => ({ ...prev, [field]: numericValue }));
         break;
-      case 'parcelas':
+      }
+
+      case 'parcelas': {
         const parcelasDigits = String(value).replace(/\D/g, '');
         processedValue = parcelasDigits ? parseInt(parcelasDigits, 10) : '';
         setFormData(prev => ({ ...prev, [field]: processedValue }));
         break;
-      case 'email':
-        setFormData(prev => ({ ...prev, [field]: String(value) }));
-        if(errors[field] === 'E-mail inválido') clearError(field);
+      }
+
+      case 'email': {
+        const v = String(value);
+        setFormData(prev => ({ ...prev, [field]: v }));
+
+        // ✅ se apagou o email, limpa qualquer erro antigo
+        if (v.trim() === '') clearError('email');
+
+        // se tinha erro de formato, limpa quando começar a digitar
+        if (errors[field] === 'E-mail inválido') clearError(field);
         break;
+      }
+
       default:
         setFormData(prev => ({ ...prev, [field]: value }));
     }
-    
+
     if (errors[field] && errors[field].includes('obrigatór')) {
       clearError(field);
     }
   }, [errors, clearError, validateFieldFormat]);
-
 
   const handleInputBlur = useCallback(async (field) => {
     setTouchedFields(prev => ({ ...prev, [field]: true }));
