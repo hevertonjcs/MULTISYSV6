@@ -155,7 +155,7 @@ export const generatePDF = async (formData, logoConfig = null) => {
     doc.setTextColor(...secondaryColor);
 
     doc.text(
-      formData.empresa_nome || 'Multinegociações LTDA',
+      formData.empresa_nome || 'R Felipe Schmidt, 249 - Centro Comercial ARS 1010',
       margin,
       headerStartY
     );
