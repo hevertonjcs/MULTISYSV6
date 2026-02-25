@@ -18,7 +18,7 @@ export const generatePDF = async (formData, logoConfig = null) => {
   const footerColor = [150, 150, 150];
 
   const multinegociacoesLogoUrl =
-    'https://bfxamibaxsyxltqkiftd.supabase.co/storage/v1/object/public/logocentral/logoo.png';
+    'https://bfxamibaxsyxltqkiftd.supabase.co/storage/v1/object/public/logocentral/logoo.svg';
 
   /* ----------------------------------------------------- */
   /* CONTROLE DE PÁGINA */
