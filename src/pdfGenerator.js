@@ -9,7 +9,7 @@ export const generatePDF = async (formData, logoConfig = null) => {
   const margin = 30; 
   let yPosition = margin;
   const contentWidth = pageWidth - 2 * margin;
-  const primaryColor = [4, 120, 87]; 
+  const primaryColor = [28, 28, 30]; 
   const secondaryColor = [75, 85, 99]; 
   const blackColor = [31, 41, 55]; 
 
