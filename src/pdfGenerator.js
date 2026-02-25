@@ -120,7 +120,7 @@ export const generatePDF = async (formData, logoConfig = null) => {
         img.onerror = reject;
       });
 
-      const maxHeight = 85;
+      const maxHeight = 120;
       const aspectRatio = img.width / img.height;
 
       let logoHeight = maxHeight;
