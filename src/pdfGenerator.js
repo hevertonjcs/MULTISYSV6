@@ -158,6 +158,7 @@ export const generatePDF = async (formData, logoConfig = null) => {
     yPosition = Math.max(initialYForText + 25, yPosition + logoMaxHeightUsed + 10);
 
 
+   
     addSectionTitle('DADOS DE ACESSO');
     addTwoFields('Usuário/Vendedor', formData.vendedor, 'Empresa', formData.equipe);
     addField('Modalidade', formData.modalidade, 0, contentWidth / 2, 14, true);
