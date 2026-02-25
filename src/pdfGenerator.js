@@ -80,17 +80,17 @@ export const generatePDF = async (formData, logoConfig = null) => {
         img.onload = resolve;
         img.onerror = (e) => { console.error("Erro ao carregar logo Multinegociações:", e); reject(e); };
       });
-      const logoTargetHeight = 110; // 50 * 1.8 = 90
+      const logoTargetHeight = 90; // 50 * 1.8 = 90
       const aspectRatio = img.width / img.height;
       let logoDisplayHeight = logoTargetHeight;
       let logoDisplayWidth = logoDisplayHeight * aspectRatio;
 
-      if (logoDisplayWidth > contentWidth * 0.5) { // Limitar a largura do logo
-        logoDisplayWidth = contentWidth * 0.5;
+      if (logoDisplayWidth > contentWidth * 0.4) { // Limitar a largura do logo
+        logoDisplayWidth = contentWidth * 0.4;
         logoDisplayHeight = logoDisplayWidth / aspectRatio;
       }
-      if (logoDisplayHeight > 110) { // Limitar altura máxima
-        logoDisplayHeight = 110;
+      if (logoDisplayHeight > 90) { // Limitar altura máxima
+        logoDisplayHeight = 90;
         logoDisplayWidth = logoDisplayHeight * aspectRatio;
       }
 
