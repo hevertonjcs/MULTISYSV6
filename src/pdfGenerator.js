@@ -17,8 +17,7 @@ export const generatePDF = async (formData, logoConfig = null) => {
   const textColor = [40, 40, 40];        // Preto leve texto
   const footerColor = [150, 150, 150];
 
-  const multinegociacoesLogoUrl =
-    'https://bfxamibaxsyxltqkiftd.supabase.co/storage/v1/object/public/logocentral/logooz.png';
+  const multinegociacoesLogoUrl = '/logooz.png';
 
   /* ----------------------------------------------------- */
   /* CONTROLE DE PÁGINA */
@@ -114,12 +113,17 @@ try {
   const img = new Image();
   img.src = multinegociacoesLogoUrl;
 
-  await new Promise((resolve, reject) => {
-    img.onload = resolve;
-    img.onerror = reject;
-  });
+  await Promise.race([
+    new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout logo')), 3000)
+    )
+  ]);
 
-  const maxHeight = 95; // um pouco maior
+  const maxHeight = 95;
   const aspectRatio = img.width / img.height;
 
   let logoHeight = maxHeight;
@@ -137,7 +141,7 @@ try {
   logoHeightUsed = logoHeight;
 
 } catch (err) {
-  console.warn('Erro ao carregar logo local');
+  console.warn('Logo ignorada (erro ou timeout)');
 }
 
     /* -------- TÍTULO -------- */
