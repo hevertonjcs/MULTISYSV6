@@ -108,38 +108,37 @@ export const generatePDF = async (formData, logoConfig = null) => {
     let headerStartY = yPosition;
     let logoHeightUsed = 0;
 
-    /* -------- LOGO -------- */
+/* -------- LOGO -------- */
 
-    try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = multinegociacoesLogoUrl;
+try {
+  const img = new Image();
+  img.src = multinegociacoesLogoUrl;
 
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+  });
 
-      const maxHeight = 85;
-      const aspectRatio = img.width / img.height;
+  const maxHeight = 95; // um pouco maior
+  const aspectRatio = img.width / img.height;
 
-      let logoHeight = maxHeight;
-      let logoWidth = logoHeight * aspectRatio;
+  let logoHeight = maxHeight;
+  let logoWidth = logoHeight * aspectRatio;
 
-      if (logoWidth > contentWidth * 0.4) {
-        logoWidth = contentWidth * 0.4;
-        logoHeight = logoWidth / aspectRatio;
-      }
+  if (logoWidth > contentWidth * 0.45) {
+    logoWidth = contentWidth * 0.45;
+    logoHeight = logoWidth / aspectRatio;
+  }
 
-      const logoX = pageWidth - margin - logoWidth;
+  const logoX = pageWidth - margin - logoWidth;
 
-      doc.addImage(img, 'PNG', logoX, headerStartY, logoWidth, logoHeight);
+  doc.addImage(img, 'PNG', logoX, headerStartY, logoWidth, logoHeight);
 
-      logoHeightUsed = logoHeight;
+  logoHeightUsed = logoHeight;
 
-    } catch (err) {
-      console.warn('Erro ao carregar logo');
-    }
+} catch (err) {
+  console.warn('Erro ao carregar logo local');
+}
 
     /* -------- TÍTULO -------- */
 
