@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { Moon, Sun } from 'lucide-react';
@@ -21,16 +21,15 @@ import { useDataMigrator } from '@/hooks/useDataMigrator';
 import { useSupabaseChannels } from '@/hooks/useSupabaseChannels';
 
 /* ============================= */
-/* 🌐 META DINÂMICA (ORIGINAL) */
+/* 🌐 META DINÂMICA (ROBUSTA) */
 /* ============================= */
 
 const useDynamicMeta = () => {
-  const [dinamiqueConfig, setDinamiqueConfig] = useState({
+  const fallbackConfig = {
     titulo: 'Sistema Multinegociações',
     descricao: 'Sistema de cadastro Multinegociações V2',
     favicon_url: 'https://i.ibb.co/MDBrt4hb/favicon.png',
-    nome_projeto: 'Multinegociações',
-  });
+  };
 
   useEffect(() => {
     const carregarDinamique = async () => {
@@ -42,19 +41,18 @@ const useDynamicMeta = () => {
           .single();
 
         if (error || !data) {
-          aplicarMeta(dinamiqueConfig);
+          aplicarMeta(fallbackConfig);
           return;
         }
 
-        setDinamiqueConfig(data);
         aplicarMeta(data);
-      } catch (err) {
-        aplicarMeta(dinamiqueConfig);
+      } catch {
+        aplicarMeta(fallbackConfig);
       }
     };
 
     const aplicarMeta = (config) => {
-      document.title = config.titulo || 'Sistema';
+      document.title = config.titulo || fallbackConfig.titulo;
 
       let metaDesc = document.querySelector("meta[name='description']");
       if (!metaDesc) {
@@ -64,7 +62,7 @@ const useDynamicMeta = () => {
       }
       metaDesc.setAttribute(
         'content',
-        config.descricao || 'Sistema Multinegociações'
+        config.descricao || fallbackConfig.descricao
       );
 
       let favicon = document.querySelector("link[rel='icon']");
@@ -76,14 +74,12 @@ const useDynamicMeta = () => {
       favicon.setAttribute('type', 'image/png');
       favicon.setAttribute(
         'href',
-        config.favicon_url || 'https://i.ibb.co/MDBrt4hb/favicon.png'
+        config.favicon_url || fallbackConfig.favicon_url
       );
     };
 
     carregarDinamique();
   }, []);
-
-  return dinamiqueConfig;
 };
 
 /* ============================= */
@@ -91,7 +87,7 @@ const useDynamicMeta = () => {
 /* ============================= */
 
 const App = () => {
-  /* 🧠 Tema Simples (localStorage) */
+  /* 🌙 Tema simples e persistente */
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -106,24 +102,18 @@ const App = () => {
   };
 
   /* --------------------------- */
-  /* Estados Globais Originais */
+  /* Estados Globais */
   /* --------------------------- */
 
   const [currentScreen, setCurrentScreen] = useState('login');
   const [userInfo, setUserInfo] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showInsightsModal, setShowInsightsModal] = useState(false);
-  const [showUserManagementModal, setShowUserManagementModal] =
-    useState(false);
-  const [showSupervisorChatModal, setShowSupervisorChatModal] =
-    useState(false);
+  const [showUserManagementModal, setShowUserManagementModal] = useState(false);
+  const [showSupervisorChatModal, setShowSupervisorChatModal] = useState(false);
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  const [logoConfig, setLogoConfig] = useState({
-    enabled: false,
-    url: '',
-    height: 30,
-  });
+  const [logoConfig] = useState({ enabled: false, url: '', height: 30 });
   const [editingCadastro, setEditingCadastro] = useState(null);
 
   const { toast } = useToast();
@@ -152,7 +142,7 @@ const App = () => {
     checkSupabaseConnection();
   }, [toast]);
 
-  /* 🔐 LOGIN (ORIGINAL COMPLETO) */
+  /* 🔐 LOGIN COMPLETO COM PERMISSÕES */
   const handleLogin = (loginData) => {
     const defaultPermissions = {
       pode_ver_todos_cadastros: false,
@@ -179,7 +169,7 @@ const App = () => {
       ) {
         parsedPermissoes = loginData.permissoes;
       }
-    } catch (error) {
+    } catch {
       parsedPermissoes = null;
     }
 
@@ -202,10 +192,8 @@ const App = () => {
   /* 🚪 LOGOUT SEGURO */
   const handleLogout = async () => {
     try {
-      if (presenceChannel)
-        await supabase.removeChannel(presenceChannel);
-      if (chatChannel)
-        await supabase.removeChannel(chatChannel);
+      if (presenceChannel) await supabase.removeChannel(presenceChannel);
+      if (chatChannel) await supabase.removeChannel(chatChannel);
 
       localStorage.clear();
 
@@ -219,7 +207,7 @@ const App = () => {
 
       setUserInfo(null);
       setCurrentScreen('login');
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao sair',
         description: 'Recarregue a página se necessário.',
@@ -252,12 +240,8 @@ const App = () => {
             onLogout={handleLogout}
             onShowSearch={() => setShowSearchModal(true)}
             onShowInsights={() => setShowInsightsModal(true)}
-            onShowUserManagement={() =>
-              setShowUserManagementModal(true)
-            }
-            onShowSupervisorChat={() =>
-              setShowSupervisorChatModal(true)
-            }
+            onShowUserManagement={() => setShowUserManagementModal(true)}
+            onShowSupervisorChat={() => setShowSupervisorChatModal(true)}
             onShowRescueModal={() => setShowRescueModal(true)}
             hasUnreadMessages={hasUnreadMessages}
             presenceChannel={presenceChannel}
@@ -269,7 +253,6 @@ const App = () => {
     }
   };
 
-  /* 🌐 RENDER PRINCIPAL */
   return (
     <main
       className={`min-h-screen relative transition-colors duration-300 ${
@@ -278,7 +261,7 @@ const App = () => {
           : 'bg-white text-black'
       }`}
     >
-      {/* 🌙 BOTÃO DE TEMA FIXO (FORA DO DASHBOARD) */}
+      {/* 🌙 BOTÃO GLOBAL DE TEMA */}
       <div className="fixed top-4 right-4 z-50">
         <Button
           variant="outline"
@@ -286,22 +269,19 @@ const App = () => {
           onClick={toggleTheme}
           className="shadow-md"
         >
-          {theme === 'dark' ? (
-            <Sun size={18} />
-          ) : (
-            <Moon size={18} />
-          )}
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </Button>
       </div>
 
       {renderScreen()}
 
-      {/* MODAIS */}
       <SearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
         logoConfig={logoConfig}
-        onEditCadastro={(data) => setEditingCadastro(data)}
+        onEditCadastro={(data) =>
+          setEditingCadastro({ ...initialFormData, ...data })
+        }
         userInfo={userInfo}
       />
 
